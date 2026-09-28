@@ -65,15 +65,22 @@ function fmtFechaHora(iso){
 }
 
 let toastT;
-function toast(msg){
-  const t = $("#toast"); t.textContent = msg; t.hidden = false;
-  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 2600);
+const ICONOS = {
+  ok: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`,
+  error: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 7v6M12 17h.01"/></svg>`,
+};
+function toast(msg, tipo = ""){
+  const t = $("#toast");
+  t.className = "toast " + tipo;
+  t.innerHTML = (ICONOS[tipo] || "") + `<span>${esc(msg)}</span>`;
+  t.hidden = false;
+  clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, tipo === "error" ? 5000 : 3000);
 }
 async function conBloqueo(fn){
   if (ocupado) return;
   ocupado = true; $("#btn-guardar").disabled = true;
   try { await fn(); }
-  catch (e){ toast(e.message || "No se pudo completar la acción."); }
+  catch (e){ toast(e.message || "No se pudo completar la acción.", "error"); }
   finally { ocupado = false; $("#btn-guardar").disabled = false; }
 }
 
@@ -337,6 +344,7 @@ function cerrar(forzar){
 
 async function guardar(e){
   e.preventDefault();
+  if (!abierto || ocupado) return;   // panel ya cerrado o guardado en curso
   const d = leerForm();
   if (!d.nombre){
     const er = $("#form-error"); er.textContent = "Escribe el nombre del proyecto para guardarlo."; er.hidden = false;
@@ -345,20 +353,25 @@ async function guardar(e){
   $("#form-error").hidden = true;
   await conBloqueo(async () => {
     const body = JSON.stringify(d);
-    if (abierto === "nuevo"){
-      const creado = await api("/proyectos", { method: "POST", body });
-      sucio = false;
-      await recargar();
-      toast("Proyecto guardado");
-      await abrir(creado.id);
-    } else {
-      detalle = await api(`/proyectos/${abierto}`, { method: "PUT", body });
-      sucio = false; $("#aviso-cambios").hidden = true;
-      renderDrawerVivo();
-      await recargar();
-      toast("Cambios guardados");
-    }
+    const nuevo = abierto === "nuevo";
+    const guardado = nuevo
+      ? await api("/proyectos", { method: "POST", body })
+      : await api(`/proyectos/${abierto}`, { method: "PUT", body });
+    // Desde aquí el proyecto ya existe: un segundo Guardar debe actualizarlo, no crear otro.
+    abierto = guardado.id; detalle = guardado; sucio = false;
+    cerrar(true);
+    toast(nuevo ? "Proyecto guardado con éxito" : "Cambios guardados con éxito", "ok");
+    await recargar();
+    destacar(guardado.id);
   });
+}
+function destacar(id){
+  const fila = document.querySelector(`.row[data-id="${id}"]`);
+  if (!fila) return;
+  fila.classList.add("recien");
+  fila.scrollIntoView({ block: "nearest" });
+  fila.focus({ preventScroll: true });
+  setTimeout(() => fila.classList.remove("recien"), 2500);
 }
 
 async function avanzar(){
@@ -368,7 +381,7 @@ async function avanzar(){
     $("#f-etapa").value = detalle.etapa;
     renderDrawerVivo();
     await recargar();
-    toast(`Movido a ${detalle.etapa}`);
+    toast(`Movido a ${detalle.etapa}`, "ok");
   });
 }
 
@@ -381,7 +394,7 @@ async function agregarNota(){
     $("#f-nota").value = "";
     renderDrawerVivo();
     await recargar();
-    toast("Nota agregada");
+    toast("Nota agregada", "ok");
   });
 }
 
