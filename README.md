@@ -15,7 +15,7 @@ App de escritorio para ordenar y hacer seguimiento de una cartera de proyectos d
 ## Estructura
 
 ```
-cartera-dipir/
+Cartera-Subvenciones/
 ├── app/
 │   ├── config.py      # etapas, líneas y ruta de la base de datos
 │   ├── db.py          # conexión y migraciones del esquema
@@ -34,6 +34,8 @@ cartera-dipir/
 Requiere Python 3.10 o superior.
 
 ```bash
+git clone https://github.com/MathiasSolar/Cartera-Subvenciones.git
+cd Cartera-Subvenciones
 python -m venv .venv
 # Windows:
 .venv\Scripts\activate
@@ -107,14 +109,3 @@ pytest
 
 - **Etapas o líneas:** edita `ETAPAS` y `LINEAS` en `app/config.py`. Si renombras una etapa que ya tiene proyectos, actualízalos con un `UPDATE` o desde la app.
 - **Nuevos campos o tablas:** agrega una migración nueva al final de `MIGRACIONES` en `app/db.py` (por ejemplo `ALTER TABLE proyectos ADD COLUMN ...`). No edites migraciones que ya se aplicaron: la app las corre en orden usando `PRAGMA user_version`.
-
-## Subir a GitHub
-
-```bash
-git init
-git add .
-git commit -m "Primera versión de Cartera DIPIR"
-git branch -M main
-git remote add origin https://github.com/<tu-usuario>/cartera-dipir.git
-git push -u origin main
-```
