@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cartera DIPIR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <div class="eyebrow">Subvenciones · GORE Aysén</div>
+      <h1>Cartera DIPIR</h1>
+    </div>
+    <button class="btn" id="btn-nuevo" type="button">+ Nuevo proyecto</button>
+  </header>
+
+  <div class="banner" id="banner-error" hidden>
+    <span>No se pudo conectar con el servidor de la app. Si la abriste desde el navegador, revisa que el servidor siga corriendo.</span>
+  </div>
+
+  <section class="controls" aria-label="Filtros">
+    <div class="fila">
+      <input class="buscar" id="buscar" type="search" placeholder="Buscar por proyecto, organización o código" aria-label="Buscar">
+      <button class="alerta vencidos" id="al-vencidos" type="button" aria-pressed="false"><span class="dot"></span>Vencidos <span class="n" id="n-vencidos">0</span></button>
+      <button class="alerta semana" id="al-semana" type="button" aria-pressed="false"><span class="dot"></span>Vencen en 7 días <span class="n" id="n-semana">0</span></button>
+    </div>
+    <div class="etapas" id="etapas" role="group" aria-label="Filtrar por etapa"></div>
+  </section>
+
+  <section class="lista" id="lista" aria-live="polite">
+    <div class="vacio">Cargando cartera…</div>
+  </section>
+  <div class="pie" id="pie"></div>
+</div>
+
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-labelledby="d-titulo" role="dialog" aria-modal="true">
+  <div class="d-head">
+    <div>
+      <div class="eyebrow" id="d-eyebrow">Proyecto</div>
+      <h2 id="d-titulo">Nuevo proyecto</h2>
+    </div>
+    <button class="cerrar" id="btn-cerrar" type="button" aria-label="Cerrar">×</button>
+  </div>
+  <form class="d-body" id="form" novalidate>
+    <div class="avance" id="avance" hidden>
+      <span class="txt" id="avance-txt"></span>
+      <button class="btn" id="btn-avanzar" type="button">Avanzar</button>
+    </div>
+
+    <div class="seccion">
+      <h3>Datos del proyecto</h3>
+      <div class="campos">
+        <label class="full">Nombre del proyecto
+          <input class="inp" id="f-nombre" type="text" autocomplete="off">
+        </label>
+        <label>Código
+          <input class="inp mono" id="f-codigo" type="text" autocomplete="off" placeholder="Ej. 8%-CUL-014">
+        </label>
+        <label>Línea / fondo
+          <input class="inp" id="f-linea" type="text" list="lineas" autocomplete="off">
+        </label>
+        <label class="full">Organización ejecutora
+          <input class="inp" id="f-organizacion" type="text" autocomplete="off">
+        </label>
+        <label>Monto (CLP)
+          <input class="inp mono" id="f-monto" type="number" min="0" step="1" inputmode="numeric">
+        </label>
+        <label>Etapa
+          <select class="inp" id="f-etapa"></select>
+        </label>
+        <label class="full">Contacto
+          <input class="inp" id="f-contacto" type="text" autocomplete="off" placeholder="Nombre, correo o teléfono">
+        </label>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <h3>Lo que sigue</h3>
+      <div class="campos">
+        <label class="full">Próxima acción
+          <input class="inp" id="f-accion" type="text" autocomplete="off" placeholder="Qué tengo que hacer o pedir">
+        </label>
+        <label>Fecha límite
+          <input class="inp mono" id="f-fecha" type="date">
+        </label>
+      </div>
+    </div>
+
+    <div class="seccion">
+      <h3>Notas generales</h3>
+      <textarea class="inp" id="f-notas" rows="3" aria-label="Notas generales"></textarea>
+    </div>
+
+    <div class="seccion" id="sec-bitacora">
+      <h3>Bitácora</h3>
+      <div class="nota-nueva">
+        <textarea class="inp" id="f-nota" rows="2" placeholder="Qué pasó hoy: llamada, correo, documento recibido…" aria-label="Nueva entrada de bitácora"></textarea>
+        <div class="fila"><button class="btn btn-ghost" id="btn-nota" type="button">Agregar a la bitácora</button></div>
+      </div>
+      <ol class="bitacora" id="bitacora"></ol>
+    </div>
+  </form>
+  <div class="d-foot">
+    <div class="aviso" id="aviso-cambios" hidden>
+      <span>Tienes cambios sin guardar.</span>
+      <button class="btn btn-ghost" id="btn-descartar" type="button">Descartar</button>
+      <button class="btn" id="btn-seguir" type="button">Seguir editando</button>
+    </div>
+    <div class="aviso peligro" id="aviso-borrar" hidden>
+      <span>¿Eliminar este proyecto y su bitácora?</span>
+      <button class="btn btn-ghost" id="btn-no-borrar" type="button">Cancelar</button>
+      <button class="btn btn-solid-danger" id="btn-si-borrar" type="button">Eliminar</button>
+    </div>
+    <div class="error" id="form-error" hidden></div>
+    <div class="fila">
+      <button class="btn btn-danger" id="btn-borrar" type="button">Eliminar proyecto</button>
+      <button class="btn" id="btn-guardar" type="submit" form="form">Guardar</button>
+    </div>
+  </div>
+</aside>
+
+<datalist id="lineas"></datalist>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>

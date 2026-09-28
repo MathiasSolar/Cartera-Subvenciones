@@ -1,0 +1,23 @@
+# Entorno de Python
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Datos: nunca subir la base de datos al repositorio
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Empaquetado
+build/
+dist/
+*.spec
+
+# Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
