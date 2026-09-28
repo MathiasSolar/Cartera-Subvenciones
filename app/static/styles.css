@@ -122,6 +122,37 @@ label{display:grid; gap:5px; font-size:12px; font-weight:600; letter-spacing:.04
 textarea.inp{resize:vertical; min-height:70px}
 .inp.mono{font-family:var(--mono); font-size:14px}
 .error{color:var(--crit); font-size:13px}
+
+/* Fecha límite: campo + calendario */
+.campo-fecha{display:grid; gap:5px}
+.lbl{font-size:12px; font-weight:600; letter-spacing:.04em; text-transform:uppercase; color:var(--muted)}
+.fecha-btn{display:flex; align-items:center; gap:10px; text-align:left}
+.fecha-btn[aria-expanded="true"]{border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft)}
+.fecha-ico{flex:none; color:var(--muted)}
+.fecha-txt{flex:1; min-width:0}
+.fecha-txt.vacia{color:var(--muted)}
+.fecha-rel{flex:none; font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+.fecha-rel.vencido{color:var(--crit); font-weight:600}
+.fecha-rel.pronto{color:var(--warn); font-weight:600}
+.cal{margin-top:4px; padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--surface); display:grid; gap:10px}
+.cal-head{display:flex; align-items:center; justify-content:space-between; gap:8px}
+.cal-mes{font-weight:600; font-size:15px}
+.cal-nav{width:34px; height:34px; border:1px solid var(--line); border-radius:8px; background:transparent; font-size:18px; line-height:1}
+.cal-nav:hover{background:var(--surface-2)}
+.cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px}
+.cal-dow{text-align:center; font-size:11px; font-weight:600; letter-spacing:.06em; color:var(--muted); padding:2px 0 6px}
+.cal-dia{height:38px; border:0; border-radius:8px; background:transparent; font-family:var(--mono); font-size:14px; font-variant-numeric:tabular-nums}
+.cal-dia:hover{background:var(--surface-2)}
+.cal-dia.finde, .cal-dia.pasado{color:var(--muted)}
+.cal-dia.fuera{color:var(--muted); opacity:.45}
+.cal-dia.hoy{box-shadow:inset 0 0 0 1.5px var(--accent); font-weight:600}
+.cal-dia.sel, .cal-dia.sel:hover{background:var(--accent); color:var(--accent-ink); font-weight:600; opacity:1}
+.cal-atajos{display:flex; flex-wrap:wrap; gap:6px; padding-top:10px; border-top:1px solid var(--line)}
+.chip{display:inline-flex; align-items:baseline; gap:6px; padding:5px 10px; border-radius:999px; border:1px solid var(--line); background:transparent; font-size:13px; font-weight:500}
+.chip:hover{background:var(--surface-2)}
+.chip small{font-family:var(--mono); font-size:11px; color:var(--muted)}
+.cal-pie{display:flex; justify-content:space-between; gap:8px}
+.cal-pie .btn{padding:6px 10px; font-size:13px}
 .seccion h3{margin:0 0 10px; font-size:12px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
 .avance{display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 14px; border-radius:8px; background:var(--accent-soft)}
 .avance .txt{flex:1 1 200px; font-size:14px}

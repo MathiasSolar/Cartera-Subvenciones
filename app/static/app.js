@@ -146,10 +146,130 @@ function renderLista(){
 
 function render(){ renderEtapas(); renderAlertas(); renderLista(); }
 
+/* ---------- Calendario de la fecha límite ---------- */
+const pad = n => String(n).padStart(2, "0");
+const isoDe = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const deIso = iso => { const [y,m,d] = iso.split("-").map(Number); return new Date(y, m-1, d); };
+const sumarDias = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const mayus = s => s.charAt(0).toUpperCase() + s.slice(1);
+const ATAJOS = [
+  ["Hoy", () => hoy()],
+  ["En 7 días", () => sumarDias(hoy(), 7)],
+  ["En 15 días", () => sumarDias(hoy(), 15)],
+  ["En 30 días", () => sumarDias(hoy(), 30)],
+  ["Fin de mes", () => { const h = hoy(); return new Date(h.getFullYear(), h.getMonth()+1, 0); }],
+];
+let calVista = null;   // primer día del mes que se está mostrando
+let calFoco = null;    // iso del día con el foco del teclado
+
+function pintarFecha(){
+  const iso = $("#f-fecha").value;
+  const txt = $("#fecha-txt"), rel = $("#fecha-rel");
+  txt.classList.toggle("vacia", !iso);
+  if (!iso){ txt.textContent = "Sin fecha · elegir"; rel.textContent = ""; rel.className = "fecha-rel"; return; }
+  txt.textContent = mayus(deIso(iso).toLocaleDateString("es-CL", { weekday:"long", day:"numeric", month:"long", year:"numeric" }));
+  rel.textContent = plazoTexto({ fecha: iso });
+  rel.className = "fecha-rel " + (estadoPlazo({ fecha: iso }) || "");
+}
+function fijarFecha(iso){
+  $("#f-fecha").value = iso || "";
+  pintarFecha();
+  $("#f-fecha").dispatchEvent(new Event("input", { bubbles: true }));
+}
+function renderCal(){
+  const y = calVista.getFullYear(), m = calVista.getMonth();
+  const sel = $("#f-fecha").value, hoyIso = isoDe(hoy());
+  const desde = sumarDias(calVista, -((calVista.getDay() + 6) % 7));   // lunes de la primera semana
+  const semanas = Math.ceil(((calVista.getDay() + 6) % 7 + new Date(y, m+1, 0).getDate()) / 7);
+  let dias = "";
+  for (let i = 0; i < semanas * 7; i++){
+    const d = sumarDias(desde, i), iso = isoDe(d);
+    const cls = ["cal-dia",
+      d.getMonth() !== m && "fuera", iso === hoyIso && "hoy", iso === sel && "sel",
+      iso < hoyIso && "pasado", (d.getDay() === 0 || d.getDay() === 6) && "finde"].filter(Boolean).join(" ");
+    const nombre = mayus(d.toLocaleDateString("es-CL", { weekday:"long", day:"numeric", month:"long", year:"numeric" }));
+    dias += `<button type="button" class="${cls}" data-iso="${iso}" tabindex="${iso === calFoco ? 0 : -1}" aria-label="${nombre}${iso === hoyIso ? " (hoy)" : ""}" aria-pressed="${iso === sel}">${d.getDate()}</button>`;
+  }
+  const atajos = ATAJOS.map(([t, f], i) =>
+    `<button type="button" class="chip" data-atajo="${i}">${t} <small>${esc(fmtFecha(isoDe(f())))}</small></button>`).join("");
+  $("#cal").innerHTML = `
+    <div class="cal-head">
+      <button type="button" class="cal-nav" data-mes="-1" aria-label="Mes anterior">‹</button>
+      <div class="cal-mes" aria-live="polite">${esc(mayus(calVista.toLocaleDateString("es-CL", { month:"long", year:"numeric" })))}</div>
+      <button type="button" class="cal-nav" data-mes="1" aria-label="Mes siguiente">›</button>
+    </div>
+    <div class="cal-grid">${["Lu","Ma","Mi","Ju","Vi","Sá","Do"].map(d => `<span class="cal-dow" aria-hidden="true">${d}</span>`).join("")}${dias}</div>
+    <div class="cal-atajos">${atajos}</div>
+    <div class="cal-pie">
+      <button type="button" class="btn btn-ghost" data-accion="quitar"${sel ? "" : " disabled"}>Quitar fecha</button>
+      <button type="button" class="btn btn-ghost" data-accion="cerrar">Listo</button>
+    </div>`;
+}
+function abrirCal(){
+  const sel = $("#f-fecha").value;
+  const base = sel ? deIso(sel) : hoy();
+  calVista = new Date(base.getFullYear(), base.getMonth(), 1);
+  calFoco = isoDe(base);
+  renderCal();
+  $("#cal").hidden = false;
+  $("#fecha-btn").setAttribute("aria-expanded", "true");
+  $("#cal").scrollIntoView({ block: "nearest" });
+  $(`#cal [data-iso="${calFoco}"]`).focus();
+}
+function cerrarCal(enfocar){
+  if ($("#cal").hidden) return;
+  $("#cal").hidden = true;
+  $("#fecha-btn").setAttribute("aria-expanded", "false");
+  if (enfocar) $("#fecha-btn").focus();
+}
+function moverFoco(iso){
+  const d = deIso(iso);
+  calFoco = iso;
+  if (d.getMonth() !== calVista.getMonth() || d.getFullYear() !== calVista.getFullYear())
+    calVista = new Date(d.getFullYear(), d.getMonth(), 1);
+  renderCal();
+  $(`#cal [data-iso="${iso}"]`).focus();
+}
+
+$("#fecha-btn").addEventListener("click", () => $("#cal").hidden ? abrirCal() : cerrarCal(true));
+$("#cal").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.iso){ fijarFecha(b.dataset.iso); cerrarCal(true); }
+  else if (b.dataset.atajo){ fijarFecha(isoDe(ATAJOS[b.dataset.atajo][1]())); cerrarCal(true); }
+  else if (b.dataset.mes){
+    calVista = new Date(calVista.getFullYear(), calVista.getMonth() + Number(b.dataset.mes), 1);
+    calFoco = isoDe(calVista);
+    renderCal();
+    $(`#cal [data-mes="${b.dataset.mes}"]`).focus();
+  }
+  else if (b.dataset.accion === "quitar"){ fijarFecha(""); cerrarCal(true); }
+  else if (b.dataset.accion === "cerrar") cerrarCal(true);
+});
+$("#cal").addEventListener("keydown", e => {
+  if (!e.target.dataset.iso) return;
+  const d = deIso(e.target.dataset.iso);
+  const pasos = { ArrowLeft:-1, ArrowRight:1, ArrowUp:-7, ArrowDown:7 };
+  let nuevo = null;
+  if (e.key in pasos) nuevo = sumarDias(d, pasos[e.key]);
+  else if (e.key === "PageUp" || e.key === "PageDown"){
+    const mes = d.getMonth() + (e.key === "PageUp" ? -1 : 1);
+    nuevo = new Date(d.getFullYear(), mes, Math.min(d.getDate(), new Date(d.getFullYear(), mes + 1, 0).getDate()));
+  }
+  else if (e.key === "Home") nuevo = sumarDias(d, -((d.getDay() + 6) % 7));
+  else if (e.key === "End") nuevo = sumarDias(d, 6 - (d.getDay() + 6) % 7);
+  if (nuevo){ e.preventDefault(); moverFoco(isoDe(nuevo)); }
+});
+document.addEventListener("click", e => {
+  // composedPath y no target.closest: al cambiar de mes el botón clicado ya no está en el DOM
+  if (!$("#cal").hidden && !e.composedPath().includes($("#campo-fecha"))) cerrarCal(false);
+});
+
 /* ---------- Ficha del proyecto ---------- */
 function llenarForm(p){
   CAMPOS.forEach(k => { $("#f-" + k).value = p[k] ?? ""; });
   if (!p.etapa) $("#f-etapa").value = ETAPAS[0];
+  cerrarCal(false);
+  pintarFecha();
 }
 function leerForm(){
   const d = {};
@@ -298,7 +418,11 @@ $("#btn-nota").addEventListener("click", agregarNota);
 $("#btn-borrar").addEventListener("click", () => $("#aviso-borrar").hidden = false);
 $("#btn-no-borrar").addEventListener("click", () => $("#aviso-borrar").hidden = true);
 $("#btn-si-borrar").addEventListener("click", borrar);
-document.addEventListener("keydown", e => { if (e.key === "Escape" && abierto) cerrar(); });
+document.addEventListener("keydown", e => {
+  if (e.key !== "Escape") return;
+  if (!$("#cal").hidden){ cerrarCal(true); return; }
+  if (abierto) cerrar();
+});
 
 /* ---------- Inicio ---------- */
 (async function iniciar(){

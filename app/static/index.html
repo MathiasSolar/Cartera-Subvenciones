@@ -86,9 +86,16 @@
         <label class="full">Próxima acción
           <input class="inp" id="f-accion" type="text" autocomplete="off" placeholder="Qué tengo que hacer o pedir">
         </label>
-        <label>Fecha límite
-          <input class="inp mono" id="f-fecha" type="date">
-        </label>
+        <div class="full campo-fecha" id="campo-fecha">
+          <span class="lbl" id="lbl-fecha">Fecha límite</span>
+          <input id="f-fecha" type="hidden">
+          <button class="inp fecha-btn" id="fecha-btn" type="button" aria-expanded="false" aria-controls="cal" aria-labelledby="lbl-fecha fecha-txt fecha-rel">
+            <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+            <span class="fecha-txt" id="fecha-txt">Sin fecha</span>
+            <span class="fecha-rel" id="fecha-rel"></span>
+          </button>
+          <div class="cal" id="cal" hidden></div>
+        </div>
       </div>
     </div>
 
