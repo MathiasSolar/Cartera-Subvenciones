@@ -6,16 +6,45 @@ from pathlib import Path
 APP_NAME = "CarteraDIPIR"
 
 ETAPAS = [
-    "Postulación",
-    "Admisibilidad",
-    "Evaluación",
-    "Adjudicado",
+    "Adjudicado",   # el seguimiento empieza cuando el proyecto ya está adjudicado
     "Convenio",
     "Transferencia",
     "Ejecución",
     "Rendición",
     "Cerrado",
 ]
+
+# Pasos de cada etapa, en orden. La app sugiere el primero y, cuando la próxima acción
+# es uno de ellos, el siguiente de la lista. Al pasar de etapa, la próxima acción queda
+# con el primer paso de la nueva. En Rendición los pasos se calculan según las rendiciones;
+# una etapa sin pasos no muestra sugerencia.
+PASOS_POR_ETAPA = {
+    "Adjudicado": ["Preparar el convenio"],
+    "Convenio": ["Enviar convenio a firma", "Tramitar la resolución que aprueba el convenio"],
+    "Transferencia": [],   # se calcula según las cuotas de transferencia
+    "Ejecución": ["Hacer seguimiento a la ejecución"],
+    "Cerrado": [],
+}
+
+# Estados de cada rendición mensual. El primero es el estado inicial.
+ESTADOS_RENDICION = [
+    "Pendiente",          # aún no la entregan
+    "En revisión",        # entregada, falta revisarla
+    "Aprobada",
+    "Incompleta",
+    "Con observaciones",
+]
+MAX_RENDICIONES = 24  # meses como máximo en el período de un proyecto
+
+# Transferencias de recursos en cuotas (p. ej. mitad en agosto y mitad en octubre)
+ETAPA_TRANSFERENCIA = "Transferencia"
+ESTADOS_CUOTA = ["Programada", "Transferida"]
+MAX_CUOTAS = 2   # la transferencia se hace en 1 o 2 cuotas
+ETAPA_RENDICIONES = "Rendición"  # la sección de rendiciones solo se muestra en esta etapa
+
+# Categorías sugeridas para la biblioteca de formatos (se puede escribir otra)
+CATEGORIAS_FORMATO = ["Resoluciones", "Oficios", "Convenios", "Rendiciones", "Actas", "Otros"]
+MAX_FORMATO_MB = 20
 
 LINEAS = [
     "Cultura",

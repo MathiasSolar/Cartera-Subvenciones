@@ -21,3 +21,6 @@ dist/
 Thumbs.db
 .vscode/
 .idea/
+
+# Configuración local de Claude Code (servidores de prueba)
+.claude/

@@ -10,15 +10,45 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<nav class="sidebar" id="sidebar" aria-label="Navegación">
+  <div class="sb-top">
+    <button class="sb-toggle" id="btn-colapsar" type="button" aria-label="Contraer menú" title="Contraer menú"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg></button>
+  </div>
+  <div class="sb-grupo">
+    <div class="sb-lbl">Vistas</div>
+    <button class="sb-item" data-vista="cartera" type="button" title="Cartera" aria-current="page"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M9 9.5V20"/></svg><span>Cartera</span></button>
+    <button class="sb-item" data-vista="cerrados" type="button" title="Proyectos cerrados"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="4.5" rx="1.2"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></svg><span>Cerrados</span></button>
+    <button class="sb-item" data-vista="dashboard" type="button" title="Dashboard"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V11M10 20V4M16 20v-6M22 20H2"/></svg><span>Dashboard</span></button>
+    <button class="sb-item" data-vista="formatos" type="button" title="Formatos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3.5H7A2.5 2.5 0 0 0 4.5 6v12A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5V9z"/><path d="M14 3.5V9h5.5M8.5 13h7M8.5 16.5h5"/></svg><span>Formatos</span></button>
+  </div>
+  <div class="sb-grupo">
+    <div class="sb-lbl">Accesos rápidos</div>
+    <button class="sb-item" id="mi-nuevo" type="button" title="Nuevo proyecto"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>Nuevo proyecto</span></button>
+    <button class="sb-item" data-ir="rendicion" type="button" title="Proyectos en Rendición"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01"/></svg><span>Proyectos en Rendición</span></button>
+    <button class="sb-item" data-ir="corregir" type="button" title="Rendiciones por corregir"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 16.5h-19z"/><path d="M12 10v4M12 17h.01"/></svg><span>Rendiciones por corregir</span></button>
+  </div>
+  <div class="sb-grupo">
+    <div class="sb-lbl">Reportes</div>
+    <button class="sb-item" id="btn-excel" type="button" title="Exportar Excel de rendiciones"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14"/></svg><span>Exportar Excel</span></button>
+  </div>
+  <div class="sb-pie">
+    <button class="sb-item" id="btn-tema" type="button"></button>
+  </div>
+</nav>
+<div class="scrim" id="menu-scrim" hidden></div>
+
 <div class="wrap">
   <header class="top">
-    <div>
-      <div class="eyebrow">Subvenciones · GORE Aysén</div>
-      <h1>Cartera DIPIR</h1>
+    <div class="top-titulo">
+      <button class="sb-abrir" id="btn-menu" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="sidebar"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6.5h16M4 12h16M4 17.5h16"/></svg></button>
+      <h1 id="titulo-vista">Cartera DIPIR</h1>
     </div>
-    <button class="btn" id="btn-nuevo" type="button">+ Nuevo proyecto</button>
+    <div class="acciones">
+      <button class="btn" id="btn-nuevo" type="button">+ Nuevo proyecto</button>
+    </div>
   </header>
 
+  <div class="vista" id="vista-cartera">
   <div class="banner" id="banner-error" hidden>
     <span>No se pudo conectar con el servidor de la app. Si la abriste desde el navegador, revisa que el servidor siga corriendo.</span>
   </div>
@@ -26,17 +56,55 @@
   <section class="controls" aria-label="Filtros">
     <div class="fila">
       <input class="buscar" id="buscar" type="search" placeholder="Buscar por proyecto, organización o código" aria-label="Buscar">
+      <select class="inp sel-anio" id="filtro-anio" aria-label="Filtrar por año"></select>
       <button class="alerta vencidos" id="al-vencidos" type="button" aria-pressed="false"><span class="dot"></span>Vencidos <span class="n" id="n-vencidos">0</span></button>
       <button class="alerta semana" id="al-semana" type="button" aria-pressed="false"><span class="dot"></span>Vencen en 7 días <span class="n" id="n-semana">0</span></button>
+      <button class="alerta c-cuotas" id="al-c-cuotas" type="button" aria-pressed="false" title="Cuotas programadas atrasadas o de los próximos 30 días"><span class="dot"></span>Cuotas por transferir <span class="n" id="n-c-cuotas">0</span></button>
+    </div>
+    <div class="fila" role="group" aria-labelledby="lbl-rend-filtros">
+      <span class="lbl" id="lbl-rend-filtros">Rendiciones</span>
+      <button class="alerta r-corregir" id="al-r-corregir" type="button" aria-pressed="false" title="Incompletas o con observaciones"><span class="dot"></span>Por corregir <span class="n" id="n-r-corregir">0</span></button>
+      <button class="alerta r-revisar" id="al-r-revisar" type="button" aria-pressed="false" title="Entregadas que falta revisar"><span class="dot"></span>Por revisar <span class="n" id="n-r-revisar">0</span></button>
+      <button class="alerta r-atrasadas" id="al-r-atrasadas" type="button" aria-pressed="false" title="Pendientes de meses que ya terminaron"><span class="dot"></span>Sin entregar <span class="n" id="n-r-atrasadas">0</span></button>
     </div>
     <div class="etapas" id="etapas" role="group" aria-label="Filtrar por etapa"></div>
   </section>
+
+  <div class="filtro-activo" id="filtro-activo" hidden>
+    <span id="filtro-txt"></span>
+    <button class="btn btn-ghost" id="btn-quitar-filtro" type="button">Quitar filtro</button>
+  </div>
 
   <section class="lista" id="lista" aria-live="polite">
     <div class="vacio">Cargando cartera…</div>
   </section>
   <div class="pie" id="pie"></div>
+  </div>
+
+  <div class="vista dash" id="vista-dashboard" hidden></div>
+
+  <div class="vista" id="vista-cerrados" hidden>
+    <section class="controls" aria-label="Buscar en proyectos cerrados">
+      <div class="fila">
+        <input class="buscar" id="buscar-cerrado" type="search" placeholder="Buscar en proyectos cerrados" aria-label="Buscar en proyectos cerrados">
+      </div>
+      <div class="etapas" id="anios-cerrados" role="group" aria-label="Filtrar por año"></div>
+    </section>
+    <div class="historico" id="lista-cerrados" aria-live="polite"></div>
+  </div>
+
+  <div class="vista" id="vista-formatos" hidden>
+    <section class="controls" aria-label="Buscar formatos">
+      <div class="fila">
+        <input class="buscar" id="buscar-formato" type="search" placeholder="Buscar formato por nombre o descripción" aria-label="Buscar formato">
+        <button class="btn" id="btn-agregar-formato" type="button">+ Agregar formato</button>
+      </div>
+      <div class="etapas" id="cats-formato" role="group" aria-label="Filtrar por categoría"></div>
+    </section>
+    <div class="lista-formatos" id="lista-formatos" aria-live="polite"></div>
+  </div>
 </div>
+
 
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" hidden aria-labelledby="d-titulo" role="dialog" aria-modal="true">
@@ -45,7 +113,10 @@
       <div class="eyebrow" id="d-eyebrow">Proyecto</div>
       <h2 id="d-titulo">Nuevo proyecto</h2>
     </div>
-    <button class="cerrar" id="btn-cerrar" type="button" aria-label="Cerrar">×</button>
+    <div class="d-botones">
+      <button class="cerrar" id="btn-modo-panel" type="button"></button>
+      <button class="cerrar" id="btn-cerrar" type="button" aria-label="Cerrar">×</button>
+    </div>
   </div>
   <form class="d-body" id="form" novalidate>
     <div class="avance" id="avance" hidden>
@@ -69,7 +140,8 @@
           <input class="inp" id="f-organizacion" type="text" autocomplete="off">
         </label>
         <label>Monto (CLP)
-          <input class="inp mono" id="f-monto" type="number" min="0" step="1" inputmode="numeric">
+          <input class="inp mono monto-inp" id="f-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 1.500.000">
+          <span class="ayuda" id="monto-rendido" hidden></span>
         </label>
         <label>Etapa
           <select class="inp" id="f-etapa"></select>
@@ -80,8 +152,19 @@
       </div>
     </div>
 
-    <div class="seccion">
+    <div class="seccion" id="sec-sigue">
       <h3>Lo que sigue</h3>
+      <p class="pista" id="sigue-pista" hidden>La próxima acción y la fecha límite se definen después de guardar el proyecto: ábrelo desde la lista y verás el siguiente paso sugerido.</p>
+      <div id="sigue-cuerpo">
+      <div class="sugerencia" id="sugerencia" hidden>
+        <div class="lbl">Siguiente paso sugerido</div>
+        <p class="sug-txt" id="sug-txt"></p>
+        <ul class="sug-det" id="sug-det"></ul>
+        <div class="fila">
+          <button class="btn btn-ghost" id="btn-sug" type="button">Usar como próxima acción</button>
+          <span class="sug-ok" id="sug-ok" hidden>✓ Es tu próxima acción actual</span>
+        </div>
+      </div>
       <div class="campos">
         <label class="full">Próxima acción
           <input class="inp" id="f-accion" type="text" autocomplete="off" placeholder="Qué tengo que hacer o pedir">
@@ -99,6 +182,129 @@
       </div>
     </div>
 
+    </div>
+    <div class="seccion" id="sec-cuotas" hidden>
+      <h3>Transferencias</h3>
+      <div class="rend">
+        <div class="cuotas-cant">
+          <span class="lbl" id="lbl-cant-cuotas">Número de cuotas</span>
+          <div class="segmentado" id="cuotas-cant" role="group" aria-labelledby="lbl-cant-cuotas"></div>
+        </div>
+        <div class="rend-resumen" id="cuotas-resumen"></div>
+        <div class="cuotas-grid" id="cuotas-grid"></div>
+        <div class="rend-editor" id="cuota-editor" hidden>
+          <div class="rend-ed-head">
+            <b id="cu-titulo">Cuota</b>
+            <button class="cerrar" id="cu-cerrar" type="button" aria-label="Cerrar cuota">×</button>
+          </div>
+          <div class="lbl" id="cu-lbl-estado">Estado</div>
+          <div class="estados" id="cu-estados" role="group" aria-labelledby="cu-lbl-estado"></div>
+          <div class="campos">
+            <label class="full">Monto de la cuota (CLP)
+              <input class="inp mono monto-inp" id="cu-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 5.000.000">
+              <span class="ayuda" id="cu-suma"></span>
+            </label>
+            <div class="campo-fecha" id="cu-programada-campo">
+              <span class="lbl" id="cu-programada-lbl">Fecha programada</span>
+              <input id="cu-programada" type="hidden">
+              <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="cu-programada-lbl cu-programada-txt">
+                <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                <span class="fecha-txt" id="cu-programada-txt"></span>
+                <span class="fecha-rel"></span>
+              </button>
+              <div class="cal" hidden></div>
+            </div>
+            <div class="campo-fecha" id="cu-transferencia-campo">
+              <span class="lbl" id="cu-transferencia-lbl">Fecha de transferencia</span>
+              <input id="cu-transferencia" type="hidden">
+              <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="cu-transferencia-lbl cu-transferencia-txt">
+                <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                <span class="fecha-txt" id="cu-transferencia-txt"></span>
+                <span class="fecha-rel"></span>
+              </button>
+              <div class="cal" hidden></div>
+            </div>
+            <label class="full">Observaciones
+              <textarea class="inp" id="cu-obs" rows="2" placeholder="N° de resolución, comprobante, banco…"></textarea>
+            </label>
+          </div>
+          <div class="fila rend-ed-pie">
+            <button class="btn btn-ghost" id="cu-cancelar" type="button">Cancelar</button>
+            <button class="btn" id="btn-cuota-guardar" type="button">Guardar cuota</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="seccion" id="sec-rend">
+      <h3>Rendiciones</h3>
+      <p class="pista" id="rend-pista" hidden>Las rendiciones se configuran después de guardar el proyecto.</p>
+      <div class="rend" id="rend-cuerpo">
+        <div class="rend-actual" id="rend-actual" hidden>
+          <span id="rend-actual-txt"></span>
+          <button class="btn btn-ghost" id="btn-cambiar-periodo" type="button">Cambiar período</button>
+        </div>
+        <div class="rend-elegir" id="rend-elegir" hidden>
+          <div class="rend-temporada">
+            <button type="button" class="cal-nav" id="temp-ant" aria-label="Temporada anterior">‹</button>
+            <span id="temp-txt"></span>
+            <button type="button" class="cal-nav" id="temp-sig" aria-label="Temporada siguiente">›</button>
+          </div>
+          <p class="pista" id="rend-instr"></p>
+          <div class="meses-temp" id="meses-temp" role="group" aria-label="Meses de la temporada"></div>
+          <div class="rend-previa">
+            <span id="rend-previa-txt"></span>
+            <span class="fila">
+              <button class="btn btn-ghost" id="btn-periodo-cancelar" type="button">Cancelar</button>
+              <button class="btn" id="btn-periodo" type="button">Crear rendiciones</button>
+            </span>
+          </div>
+        </div>
+        <div class="rend-resumen" id="rend-resumen"></div>
+        <div class="rend-grid" id="rend-grid"></div>
+        <div class="rend-editor" id="rend-editor" hidden>
+          <div class="rend-ed-head">
+            <b id="re-titulo">Rendición</b>
+            <button class="cerrar" id="re-cerrar" type="button" aria-label="Cerrar rendición">×</button>
+          </div>
+          <div class="lbl" id="re-lbl-estado">Estado</div>
+          <div class="estados" id="re-estados" role="group" aria-labelledby="re-lbl-estado"></div>
+          <div class="campos">
+            <label class="full">Monto rendido (CLP)
+              <input class="inp mono monto-inp" id="re-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 850.000">
+              <span class="ayuda" id="re-acumulado"></span>
+            </label>
+            <div class="campo-fecha" id="re-entrega-campo">
+                <span class="lbl" id="re-entrega-lbl">Fecha de entrega</span>
+                <input id="re-entrega" type="hidden">
+                <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="re-entrega-lbl re-entrega-txt">
+                  <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                  <span class="fecha-txt" id="re-entrega-txt"></span>
+                  <span class="fecha-rel"></span>
+                </button>
+                <div class="cal" hidden></div>
+              </div>
+            <div class="campo-fecha" id="re-revision-campo">
+                <span class="lbl" id="re-revision-lbl">Fecha de revisión</span>
+                <input id="re-revision" type="hidden">
+                <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="re-revision-lbl re-revision-txt">
+                  <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                  <span class="fecha-txt" id="re-revision-txt"></span>
+                  <span class="fecha-rel"></span>
+                </button>
+                <div class="cal" hidden></div>
+              </div>
+            <label class="full">Observaciones
+              <textarea class="inp" id="re-obs" rows="3" placeholder="Qué falta o qué se observó: boletas, montos que no cuadran…"></textarea>
+            </label>
+          </div>
+          <div class="fila rend-ed-pie">
+            <button class="btn btn-ghost" id="re-cancelar" type="button">Cancelar</button>
+            <button class="btn" id="btn-rend-guardar" type="button">Guardar rendición</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="seccion">
       <h3>Notas generales</h3>
       <textarea class="inp" id="f-notas" rows="3" aria-label="Notas generales"></textarea>
@@ -106,11 +312,17 @@
 
     <div class="seccion" id="sec-bitacora">
       <h3>Bitácora</h3>
-      <div class="nota-nueva">
+      <p class="pista" id="bitacora-pista" hidden>La bitácora se habilita al guardar el proyecto. Después ábrelo desde la lista para anotar llamadas, correos o documentos recibidos.</p>
+      <div class="nota-nueva" id="nota-nueva">
         <textarea class="inp" id="f-nota" rows="2" placeholder="Qué pasó hoy: llamada, correo, documento recibido…" aria-label="Nueva entrada de bitácora"></textarea>
         <div class="fila"><button class="btn btn-ghost" id="btn-nota" type="button">Agregar a la bitácora</button></div>
       </div>
+      <div class="avance-nota" id="avance-nota" hidden>
+        <span id="avance-nota-txt"></span>
+        <button class="btn" id="btn-avanzar-nota" type="button"></button>
+      </div>
       <ol class="bitacora" id="bitacora"></ol>
+      <button class="btn btn-ghost ver-historial" id="btn-historial" type="button" hidden></button>
     </div>
   </form>
   <div class="d-foot">
@@ -118,11 +330,6 @@
       <span>Tienes cambios sin guardar.</span>
       <button class="btn btn-ghost" id="btn-descartar" type="button">Descartar</button>
       <button class="btn" id="btn-seguir" type="button">Seguir editando</button>
-    </div>
-    <div class="aviso peligro" id="aviso-borrar" hidden>
-      <span>¿Eliminar este proyecto y su bitácora?</span>
-      <button class="btn btn-ghost" id="btn-no-borrar" type="button">Cancelar</button>
-      <button class="btn btn-solid-danger" id="btn-si-borrar" type="button">Eliminar</button>
     </div>
     <div class="error" id="form-error" hidden></div>
     <div class="fila">
@@ -132,7 +339,65 @@
   </div>
 </aside>
 
+<dialog class="dlg" id="dlg-historial" aria-labelledby="dlg-titulo">
+  <div class="dlg-head">
+    <div>
+      <div class="eyebrow" id="dlg-proyecto"></div>
+      <h2 id="dlg-titulo">Historial completo</h2>
+    </div>
+    <button class="cerrar" id="dlg-cerrar" type="button" aria-label="Cerrar historial">×</button>
+  </div>
+  <div class="dlg-filtros" role="group" aria-label="Filtrar historial">
+    <button type="button" class="etapa-btn" data-f="todo" aria-pressed="true">Todo <span class="n"></span></button>
+    <button type="button" class="etapa-btn" data-f="notas" aria-pressed="false">Notas <span class="n"></span></button>
+    <button type="button" class="etapa-btn" data-f="sistema" aria-pressed="false">Cambios automáticos <span class="n"></span></button>
+  </div>
+  <ol class="bitacora dlg-lista" id="dlg-lista"></ol>
+</dialog>
+
+<dialog class="dlg dlg-form" id="dlg-formato" aria-labelledby="fmt-titulo">
+  <form class="dlg-cuerpo" id="form-formato" novalidate>
+    <div class="dlg-titulo">
+      <h2 id="fmt-titulo">Agregar formato</h2>
+      <button class="cerrar" id="fmt-cerrar" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <label class="zona-archivo" id="zona-archivo">
+      <input class="sr-only" id="fmt-archivo" type="file">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 8.5l5-5 5 5M5 20h14"/></svg>
+      <span class="za-txt" id="fmt-archivo-txt"></span>
+      <small id="fmt-archivo-sub"></small>
+    </label>
+    <label>Nombre
+      <input class="inp" id="fmt-nombre" type="text" autocomplete="off" placeholder="Ej. Resolución que aprueba convenio">
+    </label>
+    <label>Categoría
+      <input class="inp" id="fmt-categoria" type="text" list="cats-lista" autocomplete="off" placeholder="Ej. Resoluciones">
+    </label>
+    <label>Descripción
+      <textarea class="inp" id="fmt-descripcion" rows="2" placeholder="Para qué sirve o cuándo usarlo (opcional)"></textarea>
+    </label>
+    <p class="error" id="fmt-error" hidden></p>
+    <div class="fila dlg-botones">
+      <button class="btn btn-ghost" id="fmt-cancelar" type="button">Cancelar</button>
+      <button class="btn" id="fmt-guardar" type="submit">Guardar formato</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="dlg dlg-confirmar" id="dlg-confirmar" aria-labelledby="conf-titulo" aria-describedby="conf-texto">
+  <div class="dlg-cuerpo">
+    <span class="conf-ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l9.5 16.5h-19z"/><path d="M12 10v4M12 17h.01"/></svg></span>
+    <h2 id="conf-titulo"></h2>
+    <p id="conf-texto"></p>
+    <div class="fila dlg-botones">
+      <button class="btn btn-ghost" id="conf-no" type="button">Cancelar</button>
+      <button class="btn btn-solid-danger" id="conf-si" type="button">Eliminar</button>
+    </div>
+  </div>
+</dialog>
+
 <datalist id="lineas"></datalist>
+<datalist id="cats-lista"></datalist>
 <div class="toast" id="toast" role="status" hidden></div>
 
 <script src="app.js"></script>
