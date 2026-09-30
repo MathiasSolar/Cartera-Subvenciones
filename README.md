@@ -2,6 +2,8 @@
 
 App de escritorio para ordenar y hacer seguimiento de una cartera de proyectos de subvenciones adjudicadas: etapa de cada proyecto, próxima acción con fecha límite, transferencias en cuotas, rendiciones mensuales, bitácora, histórico de proyectos cerrados y una biblioteca de formatos.
 
+**[⬇ Descargar para Windows](https://github.com/MathiasSolar/Cartera-Subvenciones/releases/latest)** · [Cómo usarlo](#descargar-y-usar-en-windows-sin-instalar-nada) · [Ejecutar desde el código](#ejecutar-desde-el-código-windows-mac-o-linux)
+
 ## Qué hace
 
 - **Etapas:** Adjudicado → Convenio → Transferencia → Ejecución → Rendición → Cerrado. Todo proyecto parte adjudicado.
@@ -11,6 +13,7 @@ App de escritorio para ordenar y hacer seguimiento de una cartera de proyectos d
 - **Cartera, Cerrados y Dashboard:** la cartera muestra solo proyectos activos, con filtros por etapa, año, plazos, rendiciones y cuotas; los cerrados quedan como histórico agrupado por año; el dashboard resume montos, estados y pendientes.
 - **Exportar a Excel** con hojas *Resumen*, *Detalle* (rendiciones) y *Transferencias*.
 - **Formatos:** plantillas de resoluciones, oficios, etc. para descargar.
+- **Respaldo:** exportar todos los datos a un archivo e importarlos en otro computador.
 - Tema claro/oscuro, barra lateral contraíble y panel del proyecto lateral o en ventana grande.
 
 ## Rendiciones mensuales
@@ -44,37 +47,57 @@ Cartera-Subvenciones/
 │   ├── schemas.py     # validación de datos (Pydantic)
 │   ├── main.py        # rutas de la API y archivos de la interfaz
 │   ├── rendiciones.py # meses del período y exportación a Excel
+│   ├── respaldo.py    # exportar e importar todos los datos
 │   ├── seed.py        # carga proyectos de ejemplo
 │   └── static/        # index.html, styles.css, app.js
-├── tests/test_api.py
+├── tests/             # pytest
 ├── desktop.py         # abre la app en una ventana nativa
 ├── scripts/           # generar el ejecutable (Windows / Mac)
 └── requirements*.txt
 ```
 
-## Instalar
+## Descargar y usar en Windows (sin instalar nada)
 
-Requiere Python 3.10 o superior.
+1. Entra a la página de [versiones (Releases)](https://github.com/MathiasSolar/Cartera-Subvenciones/releases/latest) y descarga **`CarteraDIPIR.exe`**.
+2. Guárdalo en una carpeta fija, por ejemplo *Documentos*, y ábrelo con doble clic.
+3. La primera vez Windows puede mostrar *"Windows protegió su PC"*, porque el ejecutable no tiene firma digital de una empresa. Haz clic en **Más información → Ejecutar de todas formas**.
+4. Para tenerlo a mano: clic derecho sobre `CarteraDIPIR.exe` → *Mostrar más opciones* → *Enviar a* → *Escritorio (crear acceso directo)*.
+
+**Requisitos:** Windows 10 u 11. La ventana usa Microsoft Edge WebView2, que ya viene con Windows; si la app no abre, instala el *WebView2 Runtime* desde la página de Microsoft.
+
+**Actualizar a una versión nueva:** descarga el `.exe` nuevo y reemplaza el anterior (con la app cerrada). Los datos no están dentro del `.exe`, así que se mantienen, y si la versión nueva cambia la base de datos, la actualiza sola al abrirse.
+
+**Usarlo en otro computador** (por ejemplo, oficina y casa): en el primero usa *Exportar respaldo* en la barra lateral; en el otro abre la app y usa *Importar respaldo* con ese archivo. Ver [Dónde quedan los datos](#dónde-quedan-los-datos).
+
+## Ejecutar desde el código (Windows, Mac o Linux)
+
+Requiere [Python](https://www.python.org/downloads/) 3.10 o superior (en Windows, marca *Add python.exe to PATH* al instalarlo) y [Git](https://git-scm.com/downloads). Sin Git, también puedes bajar el código con el botón verde **Code → Download ZIP** de esta página y descomprimirlo.
 
 ```bash
 git clone https://github.com/MathiasSolar/Cartera-Subvenciones.git
 cd Cartera-Subvenciones
 python -m venv .venv
-# Windows:
-.venv\Scripts\activate
-# Mac / Linux:
-source .venv/bin/activate
-
-pip install -r requirements-dev.txt
 ```
 
-## Usar
-
-**Como app de escritorio**
+Activa el entorno virtual:
 
 ```bash
+# Windows (PowerShell)
+.venv\Scripts\activate
+# Mac / Linux
+source .venv/bin/activate
+```
+
+Instala las dependencias y abre la app:
+
+```bash
+pip install -r requirements-dev.txt
 python desktop.py
 ```
+
+`requirements-dev.txt` incluye lo necesario para los tests y para generar el ejecutable; para solo usar la app basta `requirements.txt`. En Linux, pywebview necesita además GTK o Qt (ver la [documentación de pywebview](https://pywebview.flowrl.com/guide/installation.html)).
+
+Las próximas veces solo necesitas activar el entorno (`.venv\Scripts\activate`) y correr `python desktop.py`. Para traer los cambios más recientes del repositorio: `git pull` y luego `pip install -r requirements-dev.txt` por si cambió alguna dependencia.
 
 **En el navegador** (cómodo mientras desarrollas, recarga sola al guardar cambios):
 
@@ -95,16 +118,22 @@ CARTERA_DB=ejemplo.db python -m app.seed && CARTERA_DB=ejemplo.db python desktop
 
 ## Generar el ejecutable
 
-El ejecutable se genera en el mismo sistema donde lo vas a usar (un `.exe` se construye en Windows).
+El ejecutable se genera en el mismo sistema donde lo vas a usar (un `.exe` se construye en Windows). Necesita `requirements-dev.txt` instalado y la app cerrada.
 
 ```bash
-# Windows
+# Windows (usa .venv automáticamente)
 scripts\build_windows.bat      # crea dist\CarteraDIPIR.exe
-# Mac
+# Mac (con el entorno activado)
 bash scripts/build_mac.sh      # crea dist/CarteraDIPIR.app
 ```
 
-Para tenerlo en el escritorio de Windows: clic derecho sobre `dist\CarteraDIPIR.exe` → *Enviar a* → *Escritorio (crear acceso directo)*.
+### Publicar una versión para descargar
+
+1. Genera `dist\CarteraDIPIR.exe` y sube los cambios del código (`git push`).
+2. En GitHub: **Releases → Draft a new release**.
+3. En *Choose a tag* escribe la versión nueva (por ejemplo `v1.1.0`) y elige *Create new tag*. Ponle un título y describe los cambios.
+4. Arrastra `dist\CarteraDIPIR.exe` a la zona *Attach binaries* y espera a que termine de subir.
+5. **Publish release.** El enlace de la sección [Descargar y usar](#descargar-y-usar-en-windows-sin-instalar-nada) apunta siempre a la última versión publicada.
 
 ## Formatos
 
@@ -124,7 +153,13 @@ Todo se guarda en un solo archivo `cartera.db`:
 
 Se puede cambiar con la variable de entorno `CARTERA_DB`.
 
-**Respaldo:** copia ese archivo con la app cerrada. Para restaurar, vuelve a ponerlo en la misma ruta.
+**Respaldo y cambio de computador:** en la barra lateral, *Exportar respaldo* guarda un archivo `.db` con todos los datos (proyectos, bitácora, rendiciones, cuotas y formatos). En el otro computador, *Importar respaldo* lo revisa, muestra qué trae y, al confirmar, **reemplaza** los datos de ese computador. Antes de reemplazar:
+
+- se rechazan archivos que no son respaldos de la app, que están dañados o que vienen de una versión más nueva de la app;
+- se avisa si el computador tiene cambios más recientes que el respaldo;
+- se guarda una copia de los datos actuales en la carpeta `respaldos`, junto a `cartera.db` (se conservan las últimas 5).
+
+Un respaldo de una versión anterior se actualiza solo al importarlo. Las preferencias del computador (tema, menú, panel) no se reemplazan. También disponible en `GET /api/respaldo` y `POST /api/respaldo`.
 
 La base de datos está en `.gitignore`: el repositorio contiene solo el código, nunca los datos de los proyectos.
 

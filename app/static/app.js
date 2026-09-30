@@ -27,6 +27,16 @@ async function api(ruta, opciones = {}){
   }
   return res.status === 204 ? null : res.json();
 }
+// Archivos (formatos, respaldos): viajan tal cual en el cuerpo de la petición
+async function subirBinario(ruta, method, archivo){
+  const res = await fetch("/api" + ruta, { method, headers: { "Content-Type": "application/octet-stream" }, body: archivo });
+  if (!res.ok){
+    let msg = `Error ${res.status}`;
+    try { const j = await res.json(); if (typeof j.detail === "string") msg = j.detail; } catch {}
+    throw new Error(msg);
+  }
+  return res.json();
+}
 async function recargar(){
   proyectos = await api("/proyectos");
   cargado = true;
@@ -785,6 +795,43 @@ async function exportarExcel(){
 }
 $("#btn-excel").addEventListener("click", exportarExcel);
 
+/* ---------- Respaldo: llevar todos los datos a otro computador ---------- */
+async function exportarRespaldo(){
+  const escritorio = window.pywebview && window.pywebview.api && window.pywebview.api.exportar_respaldo;
+  if (!escritorio){ location.href = "/api/respaldo"; return; }   // navegador: descarga normal
+  try {
+    const ruta = await window.pywebview.api.exportar_respaldo();   // app de escritorio: diálogo "Guardar como"
+    if (ruta) toast(`Respaldo guardado en ${ruta}`, "ok");
+  } catch (e){
+    toast(e.message || "No se pudo exportar el respaldo.", "error");
+  }
+}
+const nProyectos = n => `${n} ${n === 1 ? "proyecto" : "proyectos"}`;
+async function importarRespaldo(archivo){
+  if (!archivo) return;
+  try {
+    const { respaldo: r, actual: a } = await subirBinario("/respaldo/revisar", "POST", archivo);
+    const fecha = iso => iso ? fmtFechaHora(iso, true) : "sin cambios";
+    let texto = `El respaldo trae ${nProyectos(r.proyectos)} (${r.activos} activos) y ${r.formatos} formatos; `
+      + `su último cambio es del ${fecha(r.ultimo_cambio)}. Reemplazará los ${nProyectos(a.proyectos)} de este computador.`;
+    if (a.ultimo_cambio && r.ultimo_cambio && a.ultimo_cambio > r.ultimo_cambio)
+      texto += `\n\nOjo: este computador tiene cambios más recientes (${fecha(a.ultimo_cambio)}) que se perderían.`;
+    texto += "\n\nAntes de reemplazar se guarda una copia de los datos actuales.";
+    const ok = await confirmar({ titulo: `¿Importar «${archivo.name}»?`, texto, boton: "Reemplazar datos" });
+    if (!ok) return;
+    const res = await subirBinario("/respaldo", "POST", archivo);
+    cerrar(true);
+    await recargar();
+    if (formatosCargados) await cargarFormatos();
+    toast(`Respaldo importado: ${nProyectos(res.proyectos)}`, "ok");
+  } catch (e){
+    toast(e.message || "No se pudo importar el respaldo.", "error");
+  }
+}
+$("#btn-resp-exportar").addEventListener("click", exportarRespaldo);
+$("#btn-resp-importar").addEventListener("click", () => { $("#resp-archivo").value = ""; $("#resp-archivo").click(); });
+$("#resp-archivo").addEventListener("change", e => importarRespaldo(e.target.files[0]));
+
 /* ---------- Barra lateral ---------- */
 function abrirMenu(){
   document.body.classList.add("menu-abierto"); $("#menu-scrim").hidden = false;
@@ -1162,16 +1209,8 @@ function elegirArchivo(file){
   if (!$("#fmt-nombre").value.trim()) $("#fmt-nombre").value = file.name.replace(/\.[^.]+$/, "");
   pintarZona();
 }
-async function subirArchivoFmt(ruta, method, params){
-  const res = await fetch("/api" + ruta + "?" + new URLSearchParams(params),
-    { method, headers: { "Content-Type": "application/octet-stream" }, body: archivoFmt });
-  if (!res.ok){
-    let msg = `Error ${res.status}`;
-    try { const j = await res.json(); if (typeof j.detail === "string") msg = j.detail; } catch {}
-    throw new Error(msg);
-  }
-  return res.json();
-}
+const subirArchivoFmt = (ruta, method, params) =>
+  subirBinario(ruta + "?" + new URLSearchParams(params), method, archivoFmt);
 $("#fmt-archivo").addEventListener("change", e => elegirArchivo(e.target.files[0]));
 const zona = $("#zona-archivo");
 zona.addEventListener("dragover", e => { e.preventDefault(); zona.classList.add("sobre"); });

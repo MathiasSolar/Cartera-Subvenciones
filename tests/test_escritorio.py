@@ -5,7 +5,7 @@ from webview.util import parse_file_type
 from desktop import filtro_archivo
 
 
-@pytest.mark.parametrize("extension", [".xlsx", ".docx", ".pdf", ".DOCX"])
+@pytest.mark.parametrize("extension", [".xlsx", ".docx", ".pdf", ".DOCX", ".db"])
 def test_filtro_valido_para_pywebview(extension):
     # Se valida con la misma función que usa pywebview: si falla, "Guardar como" no se abre
     (filtro,) = filtro_archivo(extension)

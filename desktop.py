@@ -26,6 +26,7 @@ import webview  # noqa: E402
 from app.db import conectar  # noqa: E402
 from app.main import app  # noqa: E402
 from app.rendiciones import libro_excel, nombre_archivo  # noqa: E402
+from app import respaldo  # noqa: E402
 
 
 def guardar_archivo(ruta: str, datos: bytes) -> None:
@@ -69,6 +70,18 @@ class Api:
         conn = conectar()
         try:
             datos = libro_excel(conn)
+        finally:
+            conn.close()
+        guardar_archivo(ruta, datos)
+        return ruta
+
+    def exportar_respaldo(self):
+        ruta = pedir_destino(respaldo.nombre_respaldo(), ".db")
+        if not ruta:
+            return None
+        conn = conectar()
+        try:
+            datos = respaldo.exportar(conn)
         finally:
             conn.close()
         guardar_archivo(ruta, datos)

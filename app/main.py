@@ -13,6 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import (CATEGORIAS_FORMATO, ESTADOS_CUOTA, ESTADOS_RENDICION, ETAPA_RENDICIONES,
                      ETAPA_TRANSFERENCIA, ETAPAS, LINEAS, MAX_CUOTAS, MAX_FORMATO_MB, PASOS_POR_ETAPA,
                      static_dir)
+from . import respaldo
 from .db import ahora, get_conn, migrar
 from .rendiciones import libro_excel, meses_entre, nombre_archivo, nombre_mes, tiene_datos
 from .schemas import CantidadCuotasIn, CuotaIn, FormatoIn, MenuIn, NotaIn, PanelIn, PeriodoIn, ProyectoIn, RendicionIn, TemaIn
@@ -467,6 +468,42 @@ def borrar_formato(fid: int, conn: sqlite3.Connection = Depends(get_conn)):
     obtener_formato(conn, fid)
     conn.execute("DELETE FROM formatos WHERE id = ?", (fid,))
     return Response(status_code=204)
+
+
+# ---------- Respaldo: llevar todos los datos de un computador a otro ----------
+
+async def leer_respaldo(request: Request) -> bytes:
+    datos = await request.body()
+    if not datos:
+        raise HTTPException(status_code=422, detail="El archivo está vacío.")
+    if len(datos) > respaldo.MAX_RESPALDO_MB * 1024 * 1024:
+        raise HTTPException(status_code=413, detail=f"El respaldo supera el máximo de {respaldo.MAX_RESPALDO_MB} MB.")
+    return datos
+
+
+@app.get("/api/respaldo")
+def exportar_respaldo(conn: sqlite3.Connection = Depends(get_conn)):
+    return Response(respaldo.exportar(conn), media_type="application/octet-stream",
+                    headers={"Content-Disposition": disposicion(respaldo.nombre_respaldo())})
+
+
+@app.post("/api/respaldo/revisar")
+async def revisar_respaldo(request: Request, conn: sqlite3.Connection = Depends(get_conn)):
+    """Qué trae el archivo, comparado con lo que hay en este computador, antes de importarlo."""
+    datos = await leer_respaldo(request)
+    try:
+        return {"respaldo": respaldo.revisar(datos), "actual": respaldo.resumen(conn)}
+    except respaldo.RespaldoInvalido as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+
+@app.post("/api/respaldo")
+async def importar_respaldo(request: Request):
+    datos = await leer_respaldo(request)
+    try:
+        return respaldo.importar(datos)
+    except respaldo.RespaldoInvalido as e:
+        raise HTTPException(status_code=422, detail=str(e))
 
 
 # La interfaz se sirve al final para no tapar las rutas /api.

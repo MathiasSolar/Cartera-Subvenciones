@@ -466,7 +466,7 @@ body{padding-left:var(--sb-ancho)}
 .dlg-confirmar .dlg-cuerpo{justify-items:center; gap:10px; padding:28px 26px 22px}
 .conf-ico{width:52px; height:52px; display:grid; place-items:center; border-radius:50%; background:var(--crit-soft); color:var(--crit)}
 .dlg-confirmar h2{margin:4px 0 0; font-size:19px}
-.dlg-confirmar p{margin:0; font-size:14px; color:var(--muted)}
+.dlg-confirmar p{margin:0; font-size:14px; color:var(--muted); white-space:pre-line}
 .dlg-confirmar .dlg-botones{width:100%; justify-content:center; margin-top:12px}
 .dlg-confirmar .btn{min-width:130px; justify-content:center}
 @media (prefers-reduced-motion:no-preference){
