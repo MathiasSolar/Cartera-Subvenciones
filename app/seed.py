@@ -4,9 +4,12 @@ Uso:  python -m app.seed
 Para probar sin tocar tus datos reales:
       CARTERA_DB=ejemplo.db python -m app.seed
 """
-from .db import conectar, migrar
-from .main import actualizar_cuota, actualizar_rendicion, crear, definir_cuotas, definir_periodo, registrar
-from .schemas import CantidadCuotasIn, CuotaIn, PeriodoIn, ProyectoIn, RendicionIn
+from .checklist import claves, tareas
+from .config import ETAPAS
+from .db import ahora, conectar, migrar
+from .main import (actualizar_cuota, actualizar_rendicion, crear, definir_cuotas, definir_periodo, fechas_pagare,
+                   marcar_tarea, registrar)
+from .schemas import CantidadCuotasIn, CuotaIn, MarcaIn, PagareIn, PeriodoIn, ProyectoIn, RendicionIn
 
 EJEMPLOS = [
     dict(nombre="Festival de Música Patagónica 2026", codigo="8%-CUL-014", linea="Cultura",
@@ -17,10 +20,10 @@ EJEMPLOS = [
          accion="Pedir boletas faltantes de la rendición", fecha="2026-09-25"),
     dict(nombre="Alarmas comunitarias sector alto", codigo="8%-SEG-021", linea="Seguridad ciudadana",
          organizacion="Junta de Vecinos N° 12", monto=6_200_000, etapa="Convenio",
-         accion="Enviar convenio a firma", fecha="2026-10-05"),
+         accion="Enviar todos los documentos a la organización", fecha="2026-10-05"),
     dict(nombre="Talleres de oficios para personas mayores", codigo="8%-SOC-033", linea="Adulto mayor",
          organizacion="Unión Comunal de Adultos Mayores", monto=4_800_000, etapa="Adjudicado",
-         accion="Preparar el convenio", fecha="2026-10-20"),
+         accion="Juntar los documentos en la carpeta del proyecto", fecha="2026-10-20"),
     dict(nombre="Plazas activas sector costanera", codigo="8%-DEP-002", linea="Deporte",
          organizacion="Junta de Vecinos Costanera", monto=5_400_000, etapa="Cerrado", anio=2025,
          accion="Proyecto cerrado sin observaciones"),
@@ -58,6 +61,13 @@ CUOTAS = {
     ],
 }
 
+# Checklist de ejemplo: nombre del proyecto → tareas ya marcadas (y fechas del pagaré)
+CHECKLIST = {
+    "Talleres de oficios para personas mayores": ["secpir", "doc-cdp", "doc-resolucion", "doc-declaracion", "doc-core"],
+    "Alarmas comunitarias sector alto": ["convenio", "pagare"],
+}
+PAGARES = {"Alarmas comunitarias sector alto": "2027-03-15"}   # última rendición
+
 
 def main() -> None:
     migrar()
@@ -76,6 +86,14 @@ def main() -> None:
                 cuotas = definir_cuotas(p["id"], CantidadCuotasIn(cantidad=len(datos_cuotas)), conn)["cuotas"]
                 for c, datos in zip(cuotas, datos_cuotas):
                     actualizar_cuota(c["id"], CuotaIn(**datos), conn)
+            # Las etapas por las que ya pasó tienen su checklist completo
+            for etapa in ETAPAS[:ETAPAS.index(e["etapa"])]:
+                conn.executemany("INSERT OR IGNORE INTO checklist (proyecto_id, clave, hecho) VALUES (?, ?, ?)",
+                                 [(p["id"], k, ahora()) for t in tareas(etapa) for k in claves(t)])
+            for clave in CHECKLIST.get(e["nombre"], []):
+                marcar_tarea(p["id"], clave, MarcaIn(hecho=True), conn)
+            if e["nombre"] in PAGARES:
+                fechas_pagare(p["id"], PagareIn(ultima_rendicion=PAGARES[e["nombre"]]), conn)
         conn.commit()
         print(f"Cargados {len(EJEMPLOS)} proyectos de ejemplo.")
     finally:

@@ -14,13 +14,52 @@ ETAPAS = [
     "Cerrado",
 ]
 
-# Pasos de cada etapa, en orden. La app sugiere el primero y, cuando la próxima acción
-# es uno de ellos, el siguiente de la lista. Al pasar de etapa, la próxima acción queda
-# con el primer paso de la nueva. En Rendición los pasos se calculan según las rendiciones;
-# una etapa sin pasos no muestra sugerencia.
+# Checklist de cada etapa: hay que completarlo para pasar a la siguiente, y el siguiente
+# paso sugerido es la primera tarea pendiente. Cada tarea tiene:
+#   clave         lo que se guarda en la base: no la cambies una vez en uso (el texto sí)
+#   texto         lo que se muestra
+#   subtareas     (opcional) la tarea queda lista al marcarlas todas
+#   instrucciones (opcional) se muestran en "¿Cómo se hace?"; {codigo} se reemplaza por el del proyecto
+#   pagare        (opcional) muestra las fechas del pagaré
+CHECKLIST_POR_ETAPA = {
+    "Adjudicado": [
+        {"clave": "secpir", "texto": "Llenar la información en SECPIR"},
+        {"clave": "carpeta", "texto": "Juntar los documentos en la carpeta del proyecto", "subtareas": [
+            {"clave": "doc-cdp", "texto": "CDP"},
+            {"clave": "doc-resolucion", "texto": "Resolución que informa"},
+            {"clave": "doc-declaracion", "texto": "Declaración jurada"},
+            {"clave": "doc-pauta", "texto": "Pauta de derivación"},
+            {"clave": "doc-fraccionamiento", "texto": "No fraccionamiento"},
+            {"clave": "doc-core", "texto": "Acuerdo CORE"},
+            {"clave": "doc-inhabilidad", "texto": "Formulario de inhabilidad"},
+        ]},
+        {"clave": "docdigital", "texto": "Subir el CDP y la resolución a DocDigital para la firma de las jefaturas",
+         "instrucciones": [
+             "Entrar a DocDigital como DPIR.",
+             "Comunicaciones internas → Otro tipo de documento.",
+             "Materia: el código del proyecto y CDP ({codigo} CDP).",
+             "Descripción: lo mismo que la materia.",
+             "Contenido reservado: No.",
+             "Archivo: el CDP y, como anexo, la resolución que identifica.",
+             "Visación (cadena de responsabilidad): Mathias Solar, Marcelo Rosas y José Fernández. "
+             "Firma: Magdalena Leniz. Todos como DPIR.",
+             "Instituciones que reciben esta comunicación: DPIR.",
+         ]},
+        {"clave": "firmado", "texto": "Guardar el documento firmado en la carpeta (reemplaza al sin firma)"},
+    ],
+    "Convenio": [
+        {"clave": "convenio", "texto": "Generar el convenio"},
+        {"clave": "pagare", "texto": "Generar el pagaré en SECPIR", "pagare": True},
+        {"clave": "envio", "texto": "Enviar todos los documentos a la organización"},
+        {"clave": "partes", "texto": "Recibir los documentos por Oficina de Partes"},
+    ],
+}
+
+# Pasos de las etapas sin checklist, en orden. La app sugiere el primero y, cuando la
+# próxima acción es uno de ellos, el siguiente de la lista. Al pasar de etapa, la próxima
+# acción queda con el primer paso (o la primera tarea del checklist) de la nueva.
+# En Transferencia y Rendición los pasos se calculan; una etapa sin pasos no muestra sugerencia.
 PASOS_POR_ETAPA = {
-    "Adjudicado": ["Preparar el convenio"],
-    "Convenio": ["Enviar convenio a firma", "Tramitar la resolución que aprueba el convenio"],
     "Transferencia": [],   # se calcula según las cuotas de transferencia
     "Ejecución": ["Hacer seguimiento a la ejecución"],
     "Cerrado": [],

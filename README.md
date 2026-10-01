@@ -7,11 +7,13 @@ App de escritorio para ordenar y hacer seguimiento de una cartera de proyectos d
 ## Qué hace
 
 - **Etapas:** Adjudicado → Convenio → Transferencia → Ejecución → Rendición → Cerrado. Todo proyecto parte adjudicado.
-- **Siguiente paso sugerido:** cada etapa tiene sus pasos (`PASOS_POR_ETAPA` en `app/config.py`); en Transferencia y Rendición se calculan según las cuotas y las rendiciones. Un botón los copia a la próxima acción.
-- **Avanzar de etapa exige un registro en la bitácora** de lo hecho en la etapa. Al avanzar, la próxima acción queda con el primer paso de la nueva etapa.
+- **Checklist en Adjudicado y Convenio:** tareas que hay que completar para pasar a la etapa siguiente. Adjudicado: información en SECPIR, documentos en la carpeta (CDP, resolución que informa, declaración jurada, pauta de derivación, no fraccionamiento, acuerdo CORE y formulario de inhabilidad), CDP y resolución a DocDigital (entrando como DPIR) para la firma de las jefaturas (con los datos para llenarlo en *¿Cómo se hace?*) y documento firmado en la carpeta. Convenio: generar el convenio, el pagaré en SECPIR (vence un año después de la última rendición; la app lo calcula), enviar los documentos a la organización y recibirlos por Oficina de Partes. Cada tarea marcada queda en la bitácora con su fecha. En las etapas siguientes se ve un resumen de los checklists anteriores (completo, con fecha y vencimiento del pagaré), que se puede desplegar para revisar o corregir cada tarea.
+- **Panel del proyecto en pestañas:** *Seguimiento* (el flujo), *Datos* y *Bitácora*. En Seguimiento se ve, de arriba hacia abajo: la línea de etapas, el trabajo de la etapa (checklist, cuotas o rendiciones), el siguiente paso con su fecha límite, un campo para anotar en la bitácora y, al final, el botón para pasar a la etapa siguiente, que dice qué falta si todavía no se puede. Al avanzar, la vista pasa sola a la nueva etapa. Las etapas ya completadas se pueden abrir desde la línea de etapas para revisarlas o corregirlas.
+- **Próxima acción automática:** la app la mantiene al día con el flujo (en etapas con checklist, la primera tarea pendiente; en Transferencia y Rendición, según las cuotas y las rendiciones; en las demás, `PASOS_POR_ETAPA` en `app/config.py`) y se guarda sola. Se puede escribir otra; la app la respeta hasta volver a la automática.
+- **Para avanzar de etapa** hay que completar su checklist o, si no tiene, anotar en la bitácora lo hecho; para dejar Transferencia, la 1ª cuota debe estar transferida. Antes de cerrar, la app avisa si quedan rendiciones sin aprobar o cuotas sin transferir.
 - **Transferencias en 1 o 2 cuotas** (desde la etapa Transferencia): monto, fecha programada, estado y fecha real de cada cuota. Para pasar a Ejecución debe estar transferida la 1ª cuota; la 2ª queda como recordatorio.
 - **Cartera, Cerrados y Dashboard:** la cartera muestra solo proyectos activos, con filtros por etapa, año, plazos, rendiciones y cuotas; los cerrados quedan como histórico agrupado por año; el dashboard resume montos, estados y pendientes.
-- **Exportar a Excel** con hojas *Resumen*, *Detalle* (rendiciones) y *Transferencias*.
+- **Exportar a Excel** con hojas *Resumen* (incluye el vencimiento del pagaré), *Detalle* (rendiciones) y *Transferencias*.
 - **Formatos:** plantillas de resoluciones, oficios, etc. para descargar.
 - **Respaldo:** exportar todos los datos a un archivo e importarlos en otro computador.
 - Tema claro/oscuro, barra lateral contraíble y panel del proyecto lateral o en ventana grande.
@@ -44,6 +46,7 @@ Cartera-Subvenciones/
 ├── app/
 │   ├── config.py      # etapas, líneas y ruta de la base de datos
 │   ├── db.py          # conexión y migraciones del esquema
+│   ├── checklist.py   # checklist de cada etapa y vencimiento del pagaré
 │   ├── schemas.py     # validación de datos (Pydantic)
 │   ├── main.py        # rutas de la API y archivos de la interfaz
 │   ├── rendiciones.py # meses del período y exportación a Excel
@@ -171,5 +174,6 @@ pytest
 
 ## Cambiar la app
 
+- **Checklist de una etapa:** edita `CHECKLIST_POR_ETAPA` en `app/config.py`. Puedes cambiar los textos y agregar o quitar tareas, pero no cambies la `clave` de una tarea en uso: es lo que se guarda como marcado. Una etapa nueva en `CHECKLIST_POR_ETAPA` pasa a exigir su checklist para avanzar.
 - **Etapas, pasos o líneas:** edita `ETAPAS`, `PASOS_POR_ETAPA` y `LINEAS` en `app/config.py`. Si renombras o quitas una etapa que ya tiene proyectos, agrega una migración que los mueva (como la que pasó Postulación/Admisibilidad/Evaluación a Adjudicado).
 - **Nuevos campos o tablas:** agrega una migración nueva al final de `MIGRACIONES` en `app/db.py` (por ejemplo `ALTER TABLE proyectos ADD COLUMN ...`). No edites migraciones que ya se aplicaron: la app las corre en orden usando `PRAGMA user_version`.

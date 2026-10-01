@@ -9,6 +9,7 @@ let filtro = { etapa: null, alerta: null, q: "", anio: null };
 const ANIO_ACTUAL = new Date().getFullYear();
 const esCerrado = p => p.etapa === "Cerrado";   // los cerrados no van en la cartera: están en la vista Cerrados
 let abierto = null;      // id numérico del proyecto o "nuevo"
+let vistaEtapa = null;   // etapa que se ve en Seguimiento: la actual o una ya pasada (para revisarla)
 let detalle = null;      // proyecto abierto, con su bitácora
 let sucio = false;
 let rendSucio = false;   // cambios sin guardar en el editor de una rendición
@@ -556,10 +557,9 @@ function renderTemporada(){
     (rs.length === meses.length && rs[0].mes === selDesde && rs[rs.length - 1].mes === selHasta);
 }
 function mostrarSecRend(){
-  const enRend = $("#f-etapa").value === ETAPA_REND;
+  const enRend = !!detalle && vistaEtapa === ETAPA_REND;
   $("#sec-rend").hidden = !enRend;
   if (!enRend) cerrarEditorRend();
-  renderSugerencia();
 }
 const sumaMontos = rs => rs.reduce((s, r) => s + (Number(r.monto) || 0), 0);
 function pintarAcumulado(){
@@ -579,8 +579,9 @@ function pintarMontoRendido(){
   el.innerHTML = `Rendido hasta ahora: <b>${clp(rendido)}</b>${m ? ` (${Math.round(rendido * 100 / m)}%)` : ""}`;
 }
 
-// Siguiente paso sugerido (solo una sugerencia: el usuario decide si la usa).
-// En Rendición se calcula con las rendiciones; en las demás etapas viene de config.PASOS_POR_ETAPA.
+// Siguiente paso del flujo. La app lo usa como próxima acción, salvo que el usuario escriba otra.
+// En etapas con checklist es la primera tarea pendiente; en Transferencia y Rendición se calcula
+// con las cuotas y las rendiciones; en las demás etapas viene de config.PASOS_POR_ETAPA.
 const ordinal = n => `${n}ª`;
 let PASOS_POR_ETAPA = {};
 function siguientePaso(p, etapa){
@@ -598,11 +599,20 @@ function siguientePaso(p, etapa){
     if (pend && cuotaPorTransferir(pend))   // en Ejecución o Rendición, la cuota que se acerca tiene prioridad
       return { accion: `Gestionar la transferencia de la ${nombre(pend)}`, fecha: fechaCuota(pend), ref: null, cuota: pend };
   }
+  const lista = CHECKLIST[etapa];
+  if (lista){
+    const hechas = p?.checklist_hechas || {}, fecha = isoDe(sumarDias(h, 7));
+    const pend = lista.filter(t => !tareaLista(t, hechas));
+    const check = { listas: lista.length - pend.length, total: lista.length };
+    if (!pend.length) return { accion: `Checklist completo: pasar a ${ETAPAS[ETAPAS.indexOf(etapa) + 1]}`, fecha, ref: null, check: { ...check, completo: true } };
+    const t = pend[0];
+    return { accion: t.texto, fecha, ref: null, check: { ...check, faltan: (t.subtareas || []).filter(x => !(x.clave in hechas)).map(x => x.texto) } };
+  }
   if (etapa !== ETAPA_REND){
     const pasos = PASOS_POR_ETAPA[etapa] || [];
     if (!pasos.length) return null;
     const fecha = isoDe(sumarDias(h, 7)), total = pasos.length;
-    const i = pasos.indexOf($("#f-accion").value.trim());
+    const i = pasos.indexOf((p?.accion || "").trim());
     if (i === -1) return { accion: pasos[0], fecha, ref: null, paso: 1, total };
     if (i < total - 1) return { accion: pasos[i + 1], fecha, ref: null, paso: i + 2, total };
     return { accion: pasos[i], fecha, ref: null, paso: i + 1, total, ultimo: true };   // ya en el último paso
@@ -622,42 +632,194 @@ function siguientePaso(p, etapa){
   }
   return { accion: "Todas las rendiciones están aprobadas: preparar el cierre del proyecto", fecha: isoDe(sumarDias(h, 7)), ref: null };
 }
-let sugerida = null;
-function renderSugerencia(){
-  const etapa = $("#f-etapa").value;   // la del formulario: se actualiza al cambiar la etapa
-  sugerida = detalle ? siguientePaso(detalle, etapa) : null;
-  $("#sugerencia").hidden = !sugerida;
-  if (!sugerida) return;
-  const rs = detalle.rendiciones || [];
-  const det = [];
-  if (sugerida.cuota || sugerida.avanzar){
-    const cs = detalle.cuotas || [];
-    det.push(`${cs.filter(c => c.estado === "Transferida").length} de ${cs.length} cuotas transferidas`);
-    if (sugerida.cuota) det.push((sugerida.avanzar ? "Queda pendiente la " : "") +
-      `${esc(ordinal(sugerida.cuota.numero))} cuota: ${esc(clp(sugerida.cuota.monto))}` +
-      (sugerida.cuota.fecha_programada ? ` · programada para el ${esc(fmtFecha(sugerida.cuota.fecha_programada))}` : ""));
-  } else if (etapa === ETAPA_REND && rs.length){
-    const c = contarRend(rs);
-    const ultima = [...rs].reverse().find(r => r.estado !== "Pendiente");
-    det.push(`${c.aprobadas} de ${rs.length} rendiciones aprobadas`);
-    if (ultima){
-      const f = ultima.fecha_revision || ultima.fecha_entrega;
-      det.push(`Última: ${esc(mesLargo(ultima.mes))}, ${esc(ultima.estado.toLowerCase())}${f ? ` el ${esc(fmtFecha(f))}` : ""}`);
-    }
-    const obs = sugerida.ref?.observaciones || ultima?.observaciones;
-    if (obs) det.push(`Comentario: <q>${esc(obs)}</q>`);
-  } else {
-    det.push(sugerida.total > 1 ? `Paso ${sugerida.paso} de ${sugerida.total} de la etapa ${esc(etapa)}` : `Etapa actual: ${esc(etapa)}`);
+// La próxima acción sigue al flujo: cuando cambia el paso, la app la guarda sola (con su fecha sugerida).
+// Si el usuario escribió otra (accion_manual), se respeta hasta que vuelva a la automática.
+const TEXTO_AUTO = /^(Gestionar la transferencia|Definir las cuotas|Definir el período|Pedir corrección|Revisar la|Pedir la|Esperar la|Todas las rendiciones|1ª cuota transferida|Checklist completo|Preparar el convenio|Enviar convenio a firma|Tramitar la resolución|Subir el CDP)/;
+function esTextoAuto(accion){
+  if (!accion) return true;
+  const conocidos = [...Object.values(CHECKLIST).flat().map(t => t.texto), ...Object.values(PASOS_POR_ETAPA).flat()];
+  return conocidos.includes(accion) || TEXTO_AUTO.test(accion);
+}
+let sincronizando = false, sincronizarDeNuevo = false;
+async function sincronizarSiguiente(){
+  const p = detalle;
+  if (!p || p.accion_manual) return;
+  if (sincronizando){ sincronizarDeNuevo = true; return; }
+  const s = siguientePaso(p, p.etapa);
+  if (!s || s.accion === p.accion) return;
+  sincronizando = true;
+  try {
+    // Una acción escrita antes de que existiera el flujo automático se respeta como manual
+    const body = esTextoAuto(p.accion) ? { accion: s.accion, fecha: s.fecha, manual: false }
+                                       : { accion: p.accion, fecha: p.fecha, manual: true };
+    const r = await api(`/proyectos/${p.id}/siguiente`, { method: "PUT", body: JSON.stringify(body) });
+    if (detalle?.id === r.id){ detalle = r; renderDrawerVivo(); }
+    await recargar();
+  } catch { /* se reintenta en el próximo cambio */ }
+  finally {
+    sincronizando = false;
+    if (sincronizarDeNuevo){ sincronizarDeNuevo = false; sincronizarSiguiente(); }
   }
-  const iEtapa = ETAPAS.indexOf(etapa);
-  if (sugerida.ultimo && iEtapa >= 0 && iEtapa < ETAPAS.length - 1)
-    det.push(`Es el último paso: cuando lo termines, deja un registro en la bitácora y pasa a ${esc(ETAPAS[iEtapa + 1])}.`);
-  else det.push(`Fecha sugerida: ${esc(fmtFecha(sugerida.fecha))}`);
-  $("#sug-txt").textContent = sugerida.accion;
-  $("#sug-det").innerHTML = det.map(x => `<li>${x}</li>`).join("");
-  const yaEsta = $("#f-accion").value.trim() === sugerida.accion;
-  $("#btn-sug").hidden = yaEsta;
-  $("#sug-ok").hidden = !yaEsta;
+}
+async function guardarSiguiente(body, aviso){
+  if (!detalle) return;
+  try {
+    detalle = await api(`/proyectos/${detalle.id}/siguiente`, { method: "PUT", body: JSON.stringify(body) });
+    renderDrawerVivo();
+    await recargar();
+    if (aviso) toast(aviso, "ok");
+  } catch (e){ toast(e.message || "No se pudo guardar la próxima acción.", "error"); }
+}
+function renderSiguiente(){
+  const p = detalle, actual = !!p && vistaEtapa === p.etapa;
+  $("#sec-sigue").hidden = !actual;
+  $("#sec-anotar").hidden = !actual;
+  if (!actual) return;
+  $("#sigue-txt").textContent = p.accion || "Sin próxima acción";
+  $("#sigue-origen").innerHTML = p.accion_manual
+    ? `Escrita por ti. <button type="button" class="link" id="btn-sigue-auto">Volver a la automática</button>`
+    : "La app la actualiza sola a medida que avanzas.";
+  if ($("#sigue-editor").hidden) $("#f-accion").value = p.accion || "";
+  if (!calPlazo.abierto()){ $("#f-fecha").value = p.fecha || ""; calPlazo.pintar(); }
+}
+function abrirEditorAccion(){
+  $("#sigue-editor").hidden = false;
+  $("#btn-sigue-editar").hidden = true;
+  $("#f-accion").value = detalle?.accion || "";
+  $("#f-accion").focus();
+  $("#f-accion").select();
+}
+function cerrarEditorAccion(){
+  $("#sigue-editor").hidden = true;
+  $("#btn-sigue-editar").hidden = false;
+}
+async function guardarAccionManual(){
+  const accion = $("#f-accion").value.trim();
+  cerrarEditorAccion();
+  if (!accion || accion === detalle?.accion) return;
+  await guardarSiguiente({ accion, fecha: detalle.fecha, manual: true }, "Próxima acción guardada");
+}
+async function volverAccionAutomatica(){
+  const s = detalle && siguientePaso(detalle, detalle.etapa);
+  await guardarSiguiente(s ? { accion: s.accion, fecha: s.fecha, manual: false }
+                           : { accion: detalle.accion, fecha: detalle.fecha, manual: false }, "La app vuelve a poner la próxima acción");
+}
+
+// ---------- Línea de etapas y etapa que se está viendo ----------
+const TEXTO_ETAPA = {
+  "Ejecución": "La organización está ejecutando el proyecto. Anota en la bitácora los informes, visitas o problemas; cuando termine la ejecución, pasa a Rendición.",
+  "Cerrado": "Este proyecto terminó su proceso. Su historial completo queda en la bitácora.",
+};
+function renderStepper(){
+  const p = detalle, actual = ETAPAS.indexOf(p.etapa), hechas = p.checklist_hechas || {};
+  $("#stepper").innerHTML = ETAPAS.map((e, i) => {
+    const estado = i < actual ? "hecha" : i === actual ? "actual" : "futura";
+    const cuando = i < actual && CHECKLIST[e] ? ultimaMarca(e, hechas) : null;
+    const sub = i === actual ? (e === "Cerrado" ? "Cerrado" : "En curso") : cuando ? diaMarca(cuando) : "";
+    return `<li class="paso ${estado}${e === vistaEtapa ? " vista" : ""}">
+      <button type="button" data-etapa="${esc(e)}"${i > actual ? " disabled" : ""}${i === actual ? ' aria-current="step"' : ""}
+        title="${i < actual ? `Ver ${esc(e)} (ya completada)` : i === actual ? "Etapa actual" : "Todavía no llega a esta etapa"}">
+        <span class="pt">${i < actual ? ICONO_CHECK : i + 1}</span>
+        <span class="pn">${esc(e)}</span>${sub ? `<small>${esc(sub)}</small>` : ""}
+      </button></li>`;
+  }).join("");
+}
+function renderVistaEtapa(){
+  const p = detalle, pasada = vistaEtapa !== p.etapa;
+  $("#vista-pasada").hidden = !pasada;
+  if (pasada){
+    $("#vista-pasada-txt").textContent = `Estás viendo ${vistaEtapa}, una etapa ya completada. Puedes revisar o corregir lo que se hizo.`;
+    $("#btn-volver-actual").textContent = `Volver a ${p.etapa}`;
+    $("#btn-devolver").textContent = `Devolver el proyecto a ${vistaEtapa}`;
+  }
+  const libre = TEXTO_ETAPA[vistaEtapa];
+  $("#sec-libre").hidden = !libre;
+  if (libre){
+    $("#libre-titulo").textContent = vistaEtapa;
+    $("#libre-txt").textContent = libre;
+  }
+}
+function verEtapa(etapa){
+  vistaEtapa = etapa;
+  cerrarEditorRend();
+  cerrarEditorCuota();
+  renderDrawerVivo();
+  $("#form").scrollTop = 0;
+}
+async function devolverEtapa(){
+  const p = detalle, destino = vistaEtapa;
+  const ok = await confirmar({
+    titulo: `¿Devolver el proyecto a ${destino}?`,
+    texto: `El proyecto vuelve de ${p.etapa} a ${destino}. Úsalo solo para corregir un avance hecho por error; queda registrado en la bitácora.`,
+    boton: `Devolver a ${destino}`,
+  });
+  if (!ok) return;
+  await conBloqueo(async () => {
+    const body = {};
+    CAMPOS.forEach(k => { body[k] = p[k] ?? ""; });
+    Object.assign(body, { monto: p.monto, fecha: p.fecha || null, anio: p.anio, etapa: destino });
+    detalle = await api(`/proyectos/${p.id}`, { method: "PUT", body: JSON.stringify(body) });
+    vistaEtapa = detalle.etapa;
+    $("#f-etapa").value = detalle.etapa;
+    renderDrawerVivo();
+    await recargar();
+    toast(`El proyecto volvió a ${detalle.etapa}`, "ok");
+  });
+}
+
+// ---------- Avanzar: al final de Seguimiento, cuando la etapa está completa ----------
+function requisitosAvance(p){
+  const faltan = [];
+  if (p.checklist && !p.checklist.completo)
+    faltan.push(`Completar el checklist (${p.checklist.listas} de ${p.checklist.total} listas)`);
+  if (!p.checklist && !p.registro_en_etapa) faltan.push("Anotar en la bitácora lo hecho en esta etapa");
+  if (p.etapa === ETAPA_TRANSF && !(p.cuotas || []).some(c => c.numero === 1 && c.estado === "Transferida"))
+    faltan.push("Registrar la 1ª cuota como transferida");
+  return faltan;
+}
+// Pendientes que no impiden avanzar, pero conviene ver antes (sobre todo antes de cerrar)
+function avisosAvance(p){
+  const avisos = [];
+  const rs = p.rendiciones || [];
+  if (p.etapa === ETAPA_REND){
+    const sinAprobar = rs.filter(r => r.estado !== "Aprobada").length;
+    if (!rs.length) avisos.push("No hay rendiciones registradas");
+    else if (sinAprobar) avisos.push(`${sinAprobar} de ${rs.length} rendiciones sin aprobar`);
+  }
+  if (desdeTransferencia(p.etapa) && p.etapa !== ETAPA_TRANSF){
+    const pend = (p.cuotas || []).filter(c => c.estado !== "Transferida");
+    if (pend.length) avisos.push(`${pend.map(c => ordinal(c.numero)).join(" y ")} cuota sin transferir`);
+  }
+  return avisos;
+}
+function renderAvanzar(){
+  const p = detalle, i = ETAPAS.indexOf(p.etapa);
+  const ver = vistaEtapa === p.etapa && i >= 0 && i < ETAPAS.length - 1;
+  $("#avanzar").hidden = !ver;
+  if (!ver) return;
+  const sig = ETAPAS[i + 1], faltan = requisitosAvance(p), avisos = faltan.length ? [] : avisosAvance(p);
+  const lista = faltan.length ? faltan : avisos;
+  $("#avanzar").classList.toggle("listo", !faltan.length && !avisos.length);
+  $("#avanzar").classList.toggle("ojo", !faltan.length && avisos.length > 0);
+  $("#av-titulo").textContent = faltan.length ? `Para pasar a ${sig} falta:`
+    : avisos.length ? `Puedes pasar a ${sig}, pero queda pendiente:` : `Todo listo en ${p.etapa}`;
+  $("#av-faltan").innerHTML = lista.map(f => `<li>${esc(f)}</li>`).join("");
+  $("#av-faltan").hidden = !lista.length;
+  const b = $("#btn-avanzar");
+  b.textContent = sig === "Cerrado" ? "Cerrar el proyecto →" : `Pasar a ${sig} →`;
+  b.disabled = faltan.length > 0;
+}
+
+// ---------- Pestañas del panel ----------
+function mostrarTab(t){
+  document.querySelectorAll("#d-tabs [role=tab]").forEach(b => {
+    const on = b.dataset.tab === t;
+    b.setAttribute("aria-selected", on);
+    b.tabIndex = on ? 0 : -1;
+  });
+  ["seg", "datos", "bit"].forEach(x => { $("#tab-" + x).hidden = x !== t; });
+  $(".d-foot").hidden = t !== "datos";   // Guardar y Eliminar son de los datos del proyecto
+  $("#form").scrollTop = 0;
 }
 async function aplicarPeriodo(){
   if (!detalle || !selDesde) return;
@@ -728,16 +890,6 @@ const calRevision = crearCalendario($("#re-revision-campo"), { atajos: ATAJOS_PA
 
 $("#btn-periodo").addEventListener("click", aplicarPeriodo);
 $("#re-monto").addEventListener("input", pintarAcumulado);
-$("#btn-sug").addEventListener("click", () => {
-  if (!sugerida) return;
-  const a = $("#f-accion");
-  a.value = sugerida.accion;
-  a.dispatchEvent(new Event("input", { bubbles: true }));   // cuenta como cambio sin guardar
-  calPlazo.fijar(sugerida.fecha);
-  renderSugerencia();
-  toast("Próxima acción actualizada. Recuerda guardar.", "ok");
-});
-$("#f-accion").addEventListener("input", renderSugerencia);
 $("#btn-cambiar-periodo").addEventListener("click", () => {
   prepararPeriodo(); eligiendoPeriodo = true; renderPeriodo();
   $("#meses-temp .extremo, #meses-temp .mes-chip")?.focus();
@@ -755,7 +907,6 @@ $("#meses-temp").addEventListener("click", e => {
   renderTemporada();
   $(`#meses-temp [data-mes="${mes}"]`).focus();
 });
-$("#f-etapa").addEventListener("change", mostrarSecRend);
 $("#rend-grid").addEventListener("click", e => {
   const b = e.target.closest(".rend-mes"); if (!b) return;
   const rid = Number(b.dataset.rid);
@@ -1287,7 +1438,7 @@ const cuotaPorTransferir = c => c.estado === "Programada" && !!c.fecha_programad
 const desdeTransferencia = etapa => ETAPAS.indexOf(etapa) >= ETAPAS.indexOf(ETAPA_TRANSF) && ETAPAS.indexOf(ETAPA_TRANSF) >= 0;
 
 function mostrarSecCuotas(){
-  const ver = !!detalle && desdeTransferencia($("#f-etapa").value);
+  const ver = !!detalle && desdeTransferencia(vistaEtapa);
   $("#sec-cuotas").hidden = !ver;
   if (!ver) cerrarEditorCuota();
 }
@@ -1412,7 +1563,111 @@ $("#sec-cuotas").addEventListener("keydown", e => {
   // Enter en un campo de la cuota no debe guardar el proyecto completo
   if (e.key === "Enter" && e.target.matches("input")){ e.preventDefault(); if (e.target.closest("#cuota-editor")) guardarCuota(); }
 });
-$("#f-etapa").addEventListener("change", mostrarSecCuotas);
+
+/* ---------- Checklist de la etapa (Adjudicado, Convenio) ---------- */
+let CHECKLIST = {};   // config.checklist_por_etapa: tareas de cada etapa
+const clavesTarea = t => t.subtareas ? t.subtareas.map(s => s.clave) : [t.clave];
+const tareaLista = (t, hechas) => clavesTarea(t).every(c => c in hechas);
+const pagareBox = $("#pagare-fechas");
+const calUltima = crearCalendario($("#pg-ultima-campo"), { atajos: [] });
+const calVence = crearCalendario($("#pg-vence-campo"), { atajos: [] });
+const ICONO_CHECK = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>`;
+const diaMarca = iso => { const d = new Date(iso); return `${d.getDate()} ${MESES_CORTOS[d.getMonth()]}`; };
+
+function avanceDe(etapa, hechas){
+  const lista = CHECKLIST[etapa] || [], listas = lista.filter(t => tareaLista(t, hechas)).length;
+  return { listas, total: lista.length, completo: listas === lista.length };
+}
+const ultimaMarca = (etapa, hechas) => (CHECKLIST[etapa] || []).flatMap(clavesTarea).map(c => hechas[c]).filter(Boolean).sort().pop();
+
+function mostrarSecCheck(){
+  $("#sec-check").hidden = !(detalle && CHECKLIST[vistaEtapa]);
+}
+function casilla(clave, texto, hechas){
+  const f = hechas[clave];
+  return `<label class="check${f ? " hecha" : ""}">
+    <input class="sr-only" type="checkbox" data-clave="${esc(clave)}"${f ? " checked" : ""}>
+    <span class="caja">${ICONO_CHECK}</span><span class="txt">${esc(texto)}</span>
+    ${f ? `<time class="cuando" datetime="${esc(f)}" title="Marcada el ${esc(fmtFechaHora(f, true))}">${esc(diaMarca(f))}</time>` : ""}
+  </label>`;
+}
+function tareasHtml(etapa, hechas, abiertos){
+  const codigo = detalle.codigo || "[código]";
+  return (CHECKLIST[etapa] || []).map(t => {
+    const lista = tareaLista(t, hechas);
+    let html;
+    if (t.subtareas){
+      const n = t.subtareas.filter(s => s.clave in hechas).length;
+      html = `<div class="check grupo${lista ? " hecha" : ""}"><span class="caja">${ICONO_CHECK}</span><span class="txt">${esc(t.texto)}</span><span class="cuando">${n} de ${t.subtareas.length}</span></div>
+        <div class="subtareas">${t.subtareas.map(s => casilla(s.clave, s.texto, hechas)).join("")}</div>`;
+    } else html = casilla(t.clave, t.texto, hechas);
+    if (t.instrucciones) html += `<details class="como" data-t="${esc(t.clave)}"${abiertos.has(t.clave) ? " open" : ""}>
+        <summary>¿Cómo se hace?</summary>
+        <ol>${t.instrucciones.map(x => `<li>${esc(x.replaceAll("{codigo}", codigo))}</li>`).join("")}</ol>
+      </details>`;
+    if (t.pagare) html += `<div class="pagare-slot"></div>`;
+    return `<li class="tarea${lista ? " completa" : ""}">${html}</li>`;
+  }).join("");
+}
+function renderChecklist(){
+  if (!detalle) return;
+  const etapa = vistaEtapa, hechas = detalle.checklist_hechas || {};
+  const abiertos = new Set([...document.querySelectorAll("#sec-check details[open]")].map(d => d.dataset.t));
+  const foco = document.activeElement?.dataset?.clave;
+
+  // Checklist de la etapa que se está viendo
+  const tiene = !!CHECKLIST[etapa];
+  $("#check-actual").hidden = !tiene;
+  if (tiene){
+    const a = avanceDe(etapa, hechas);
+    $("#check-titulo").textContent = `Checklist de ${etapa}`;
+    $("#check-cuenta").textContent = a.completo ? "Completo" : `${a.listas} de ${a.total} listas`;
+    $("#check-cuenta").classList.toggle("ok", a.completo);
+    $("#check-barra").style.width = `${a.total ? a.listas / a.total * 100 : 0}%`;
+    $("#checklist").innerHTML = tareasHtml(etapa, hechas, abiertos);
+  } else $("#checklist").innerHTML = "";
+
+  // El bloque de fechas (con sus calendarios) se reutiliza: va en la tarea del pagaré, o queda oculto en la sección
+  const slot = $("#sec-check .pagare-slot");
+  if (slot) slot.replaceWith(pagareBox);
+  else $("#sec-check").appendChild(pagareBox);
+  pagareBox.hidden = !slot;
+  $("#pg-ultima").value = detalle.ultima_rendicion || ""; calUltima.pintar();
+  $("#pg-vence").value = detalle.vence_pagare || ""; calVence.pintar();
+  if (foco) $(`#sec-check input[data-clave="${foco}"]`)?.focus({ preventScroll: true });
+}
+let colaCheck = Promise.resolve();   // las marcas se guardan en orden aunque se hagan seguidas
+$("#sec-check").addEventListener("change", e => {
+  const inp = e.target.closest("input[data-clave]"); if (!inp || !detalle) return;
+  const clave = inp.dataset.clave, hecho = inp.checked, pid = detalle.id;
+  colaCheck = colaCheck.then(async () => {
+    try {
+      detalle = await api(`/proyectos/${pid}/checklist/${encodeURIComponent(clave)}`, { method: "PUT", body: JSON.stringify({ hecho }) });
+      renderDrawerVivo();
+      const deLaEtapa = (CHECKLIST[detalle.etapa] || []).flatMap(clavesTarea).includes(clave);
+      if (hecho && deLaEtapa && detalle.checklist?.completo){
+        toast(`Checklist completo: ya puedes pasar a ${ETAPAS[ETAPAS.indexOf(detalle.etapa) + 1]}`, "ok");
+        $("#avanzar").scrollIntoView({ block: "nearest", behavior: "smooth" });   // el botón para avanzar queda a la vista
+      }
+      await recargar();
+    } catch (err){
+      inp.checked = !hecho;
+      toast(err.message || "No se pudo guardar la tarea.", "error");
+    }
+  });
+});
+async function guardarPagare(body){
+  if (!detalle) return;
+  try {
+    detalle = await api(`/proyectos/${detalle.id}/pagare`, { method: "PUT", body: JSON.stringify(body) });
+    renderDrawerVivo();
+    toast(detalle.vence_pagare ? `El pagaré vence el ${fmtFecha(detalle.vence_pagare)}` : "Se quitó el vencimiento del pagaré", "ok");
+  } catch (e){ toast(e.message || "No se pudieron guardar las fechas del pagaré.", "error"); }
+}
+// Al elegir la última rendición, el servidor calcula el vencimiento (un año después)
+$("#pg-ultima").addEventListener("input", () => guardarPagare({ ultima_rendicion: $("#pg-ultima").value || null }));
+$("#pg-vence").addEventListener("input", () =>
+  guardarPagare({ ultima_rendicion: $("#pg-ultima").value || null, vence_pagare: $("#pg-vence").value || null }));
 
 /* ---------- Forma del panel del proyecto: lateral o grande ---------- */
 const ICONO_AGRANDAR = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>`;
@@ -1450,6 +1705,7 @@ function confirmar({ titulo, texto, boton = "Eliminar" }){
 /* ---------- Ficha del proyecto ---------- */
 function llenarForm(p){
   CAMPOS.forEach(k => { $("#f-" + k).value = p[k] ?? ""; });
+  cerrarEditorAccion();
   $("#f-monto").value = formatoMiles(p.monto);
   if (!p.etapa) $("#f-etapa").value = ETAPAS[0];
   calPlazo.cerrar(false);
@@ -1464,33 +1720,29 @@ function leerForm(){
 }
 function renderDrawerVivo(){
   const p = detalle; if (!p) return;
+  if (!ETAPAS.includes(vistaEtapa) || ETAPAS.indexOf(vistaEtapa) > ETAPAS.indexOf(p.etapa)) vistaEtapa = p.etapa;
+  $("#f-etapa").value = p.etapa;   // la etapa cambia con el flujo; Guardar en Datos no la toca
   $("#d-titulo").textContent = p.nombre || "Sin nombre";
   $("#d-eyebrow").textContent = [p.etapa, p.codigo].filter(Boolean).join(" · ") || "Proyecto";
-  const i = ETAPAS.indexOf(p.etapa);
-  const hay = i >= 0 && i < ETAPAS.length - 1;
-  $("#avance").hidden = !hay;
-  if (hay){
-    const siguiente = ETAPAS[i+1], ok = p.registro_en_etapa;
-    $("#avance-txt").textContent = ok ? `Está en ${p.etapa}.`
-      : `Está en ${p.etapa}. Para pasar a ${siguiente}, deja primero un registro en la bitácora.`;
-    const btn = $("#btn-avanzar");
-    btn.textContent = ok ? `Pasar a ${siguiente} →` : "Ir a la bitácora";
-    btn.dataset.modo = ok ? "avanzar" : "bitacora";
-    btn.classList.toggle("btn-ghost", !ok);
-    $("#btn-avanzar-nota").textContent = `Pasar a ${siguiente} →`;
-    $("#avance-nota-txt").textContent = `Registro guardado. ¿Pasar a ${siguiente}?`;
-  }
-  $("#avance-nota").hidden = !(hay && p.registro_en_etapa && notaRecien);
   const b = p.bitacora || [];
+  $("#tab-bit-n").textContent = b.length || "";
   $("#bitacora").innerHTML = b.length ? b.slice(0, MAX_BITACORA).map(n => liBitacora(n, true)).join("")
     : `<li><span></span><span class="t" style="color:var(--muted)">Sin entradas todavía.</span></li>`;
+  $("#bitacora-ultimas").innerHTML = b.slice(0, 3).map(n => liBitacora(n, true)).join("");
   $("#btn-historial").hidden = b.length <= MAX_BITACORA;
   $("#btn-historial").textContent = `Ver historial completo (${b.length} entradas)`;
+  renderStepper();
+  renderVistaEtapa();
   renderRendiciones();
   renderCuotas();
+  renderChecklist();
   mostrarSecRend();
   mostrarSecCuotas();
+  mostrarSecCheck();
+  renderSiguiente();
+  renderAvanzar();
   pintarMontoRendido();
+  sincronizarSiguiente();
 }
 // El panel se desliza al cerrarse; si se vuelve a abrir durante la animación, se cancela el cierre
 let cierrePanel = null;
@@ -1508,33 +1760,31 @@ function ocultarPanel(){
 function mostrarDrawer(nuevo){
   clearTimeout(cierrePanel);
   $("#drawer").classList.remove("saliendo"); $("#scrim").classList.remove("saliendo");
-  ["#aviso-cambios","#form-error","#avance-nota"].forEach(s => $(s).hidden = true);
-  $("#nota-nueva").hidden = nuevo;
-  $("#bitacora-pista").hidden = !nuevo;
-  $("#sigue-pista").hidden = !nuevo;
-  $("#sigue-cuerpo").hidden = nuevo;
-  $("#rend-pista").hidden = !nuevo;
-  $("#rend-cuerpo").hidden = nuevo;
+  ["#aviso-cambios", "#form-error"].forEach(s => $(s).hidden = true);
+  // Un proyecto nuevo solo tiene sus datos; el seguimiento empieza al guardarlo
+  $("#d-tabs").hidden = nuevo;
+  $("#campo-etapa").hidden = !nuevo;
+  mostrarTab(nuevo ? "datos" : "seg");
   cerrarEditorRend();
   cerrarEditorCuota();
-  mostrarSecRend();
-  mostrarSecCuotas();
-  if (nuevo) $("#monto-rendido").hidden = true;
+  if (nuevo){
+    ["#sec-rend", "#sec-cuotas", "#sec-check"].forEach(s => $(s).hidden = true);
+    $("#monto-rendido").hidden = true;
+  }
   $("#btn-borrar").hidden = nuevo;
   $("#f-nota").value = "";
+  $("#f-nota-rapida").value = "";
   $("#scrim").hidden = false; $("#drawer").hidden = false;
   document.body.style.overflow = "hidden";
   $("#form").scrollTop = 0;
 }
 async function abrir(id){
   sucio = false;
-  notaRecien = false;
   if (id === "nuevo"){
-    abierto = "nuevo"; detalle = null;
+    abierto = "nuevo"; detalle = null; vistaEtapa = null;
     llenarForm({ etapa: filtro.etapa || ETAPAS[0] });
     $("#d-titulo").textContent = "Nuevo proyecto";
     $("#d-eyebrow").textContent = "Registrar en la cartera";
-    $("#avance").hidden = true;
     $("#bitacora").innerHTML = "";
     $("#rend-grid").innerHTML = "";
     mostrarDrawer(true);
@@ -1545,6 +1795,7 @@ async function abrir(id){
     detalle = await api(`/proyectos/${id}`);
   } catch (e){ toast(e.message); return; }
   abierto = detalle.id;
+  vistaEtapa = detalle.etapa;
   eligiendoPeriodo = false;
   prepararPeriodo();
   llenarForm(detalle);
@@ -1553,7 +1804,11 @@ async function abrir(id){
   setTimeout(() => $("#btn-cerrar").focus(), 30);
 }
 function cerrar(forzar){
-  if (!forzar && (sucio || rendSucio)){ $("#aviso-cambios").hidden = false; return; }
+  if (!forzar && (sucio || rendSucio)){
+    if (sucio) mostrarTab("datos");   // el aviso está junto a Guardar
+    $("#aviso-cambios").hidden = false;
+    return;
+  }
   const previo = abierto;
   abierto = null; detalle = null; sucio = false;
   cerrarEditorRend();
@@ -1582,12 +1837,22 @@ async function guardar(e){
       : await api(`/proyectos/${abierto}`, { method: "PUT", body });
     // Desde aquí el proyecto ya existe: un segundo Guardar debe actualizarlo, no crear otro.
     abierto = guardado.id; detalle = guardado; sucio = false;
+    if (nuevo){
+      vistaEtapa = guardado.etapa;
+      eligiendoPeriodo = false;
+      prepararPeriodo();
+      llenarForm(guardado);
+      mostrarDrawer(false);
+      renderDrawerVivo();
+      await recargar();
+      toast("Proyecto creado. Sigue su avance desde aquí.", "ok");
+      return;
+    }
     cerrar(true);
     if (esCerrado(guardado) && etapaAntes !== guardado.etapa)
       toast(`Proyecto cerrado: ahora está en Cerrados (${guardado.anio}).`, "ok");
     else
-      toast(nuevo ? "Proyecto guardado. Ábrelo en la lista para definir la próxima acción y anotar en la bitácora."
-                  : "Cambios guardados con éxito", "ok");
+      toast("Cambios guardados con éxito", "ok");
     await recargar();
     destacar(guardado.id);
   });
@@ -1605,27 +1870,22 @@ async function avanzar(){
   if (!detalle) return;
   await conBloqueo(async () => {
     detalle = await api(`/proyectos/${detalle.id}/avanzar`, { method: "POST" });
-    notaRecien = false;
-    // La nueva etapa parte con su primer paso como próxima acción
-    $("#f-etapa").value = detalle.etapa;
-    $("#f-accion").value = detalle.accion || "";
-    $("#f-fecha").value = detalle.fecha || "";
-    calPlazo.pintar();
+    vistaEtapa = detalle.etapa;   // la vista pasa sola a la nueva etapa, que parte con su primer paso
     renderDrawerVivo();
+    $("#form").scrollTop = 0;
     await recargar();
     toast(esCerrado(detalle) ? `Proyecto cerrado: ahora está en Cerrados (${detalle.anio}).`
-      : `Movido a ${detalle.etapa}${detalle.accion ? `. Próxima acción: ${detalle.accion}` : ""}`, "ok");
+      : `Pasó a ${detalle.etapa}${detalle.accion ? `. Siguiente: ${detalle.accion}` : ""}`, "ok");
   });
 }
 
-async function agregarNota(){
-  const texto = $("#f-nota").value.trim();
-  if (!texto){ $("#f-nota").focus(); return; }
+async function agregarNota(campo){
+  const texto = campo.value.trim();
+  if (!texto){ campo.focus(); return; }
   if (!detalle) return;
   await conBloqueo(async () => {
     detalle = await api(`/proyectos/${detalle.id}/bitacora`, { method: "POST", body: JSON.stringify({ texto }) });
-    $("#f-nota").value = "";
-    notaRecien = true;
+    campo.value = "";
     renderDrawerVivo();
     await recargar();
     toast("Nota agregada", "ok");
@@ -1659,21 +1919,44 @@ $("#buscar").addEventListener("input", e => { filtro.q = e.target.value; renderL
 $("#form").addEventListener("submit", guardar);
 $("#form").addEventListener("input", e => {
   if (e.target.closest("#rend-editor, #cuota-editor")) rendSucio = true;
-  else if (e.target.id !== "f-nota" && !e.target.closest("#sec-rend, #sec-cuotas")) sucio = true;
+  else if (e.target.closest("#tab-datos")) sucio = true;   // lo demás se guarda al momento
 });
 $("#btn-cerrar").addEventListener("click", () => cerrar());
 $("#scrim").addEventListener("click", () => cerrar());
 $("#btn-descartar").addEventListener("click", () => cerrar(true));
 $("#btn-seguir").addEventListener("click", () => $("#aviso-cambios").hidden = true);
-let notaRecien = false;   // se acaba de agregar un registro: ofrecer pasar de etapa ahí mismo
-$("#btn-avanzar").addEventListener("click", () => {
-  if ($("#btn-avanzar").dataset.modo === "bitacora"){
-    $("#sec-bitacora").scrollIntoView({ block: "start", behavior: "smooth" });
-    $("#f-nota").focus({ preventScroll: true });
-  } else avanzar();
+$("#btn-avanzar").addEventListener("click", avanzar);
+$("#btn-nota").addEventListener("click", () => agregarNota($("#f-nota")));
+$("#btn-nota-rapida").addEventListener("click", () => agregarNota($("#f-nota-rapida")));
+$("#d-tabs").addEventListener("click", e => { const b = e.target.closest("[role=tab]"); if (b) mostrarTab(b.dataset.tab); });
+$("#d-tabs").addEventListener("keydown", e => {
+  const tabs = [...document.querySelectorAll("#d-tabs [role=tab]")];
+  const i = tabs.indexOf(document.activeElement), paso = { ArrowRight: 1, ArrowLeft: -1 }[e.key];
+  if (i < 0 || !paso) return;
+  const t = tabs[(i + paso + tabs.length) % tabs.length];
+  t.focus(); mostrarTab(t.dataset.tab);
 });
-$("#btn-avanzar-nota").addEventListener("click", avanzar);
-$("#btn-nota").addEventListener("click", agregarNota);
+$("#stepper").addEventListener("click", e => {
+  const b = e.target.closest("button[data-etapa]");
+  if (b && !b.disabled) verEtapa(b.dataset.etapa);
+});
+$("#btn-volver-actual").addEventListener("click", () => verEtapa(detalle.etapa));
+$("#btn-devolver").addEventListener("click", devolverEtapa);
+$("#btn-sigue-editar").addEventListener("click", abrirEditorAccion);
+$("#btn-sigue-cancelar").addEventListener("click", cerrarEditorAccion);
+$("#btn-sigue-guardar").addEventListener("click", guardarAccionManual);
+$("#sec-sigue").addEventListener("click", e => { if (e.target.id === "btn-sigue-auto") volverAccionAutomatica(); });
+$("#f-accion").addEventListener("keydown", e => {
+  // Enter guarda la acción (no el proyecto completo); Esc cancela
+  if (e.key === "Enter"){ e.preventDefault(); guardarAccionManual(); }
+  else if (e.key === "Escape"){ e.stopPropagation(); cerrarEditorAccion(); }
+});
+// La fecha límite se guarda al elegirla en el calendario
+$("#f-fecha").addEventListener("input", () => {
+  if (!detalle) return;
+  guardarSiguiente({ accion: detalle.accion, fecha: $("#f-fecha").value || null, manual: !!detalle.accion_manual },
+    $("#f-fecha").value ? `Fecha límite: ${fmtFecha($("#f-fecha").value)}` : "Se quitó la fecha límite");
+});
 $("#btn-borrar").addEventListener("click", async () => {
   if (!detalle) return;
   const ok = await confirmar({
@@ -1702,6 +1985,7 @@ document.addEventListener("keydown", e => {
     ESTADOS_REND = cfg.estados_rendicion;
     ETAPA_REND = cfg.etapa_rendiciones;
     PASOS_POR_ETAPA = cfg.pasos_por_etapa || {};
+    CHECKLIST = cfg.checklist_por_etapa || {};
     aplicarMenu(cfg.menu || "expandido");
     aplicarPanel(cfg.panel || "lateral");
     CATS_FORMATO = cfg.categorias_formato || [];

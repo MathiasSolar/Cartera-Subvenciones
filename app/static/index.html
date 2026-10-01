@@ -124,58 +124,199 @@
       <button class="cerrar" id="btn-cerrar" type="button" aria-label="Cerrar">×</button>
     </div>
   </div>
+  <div class="d-tabs" id="d-tabs" role="tablist" aria-label="Secciones del proyecto">
+    <button type="button" role="tab" id="tab-btn-seg" data-tab="seg" aria-controls="tab-seg" aria-selected="true">Seguimiento</button>
+    <button type="button" role="tab" id="tab-btn-datos" data-tab="datos" aria-controls="tab-datos" aria-selected="false" tabindex="-1">Datos</button>
+    <button type="button" role="tab" id="tab-btn-bit" data-tab="bit" aria-controls="tab-bit" aria-selected="false" tabindex="-1">Bitácora <span class="n" id="tab-bit-n"></span></button>
+  </div>
   <form class="d-body" id="form" novalidate>
-    <div class="avance" id="avance" hidden>
-      <span class="txt" id="avance-txt"></span>
-      <button class="btn" id="btn-avanzar" type="button">Avanzar</button>
-    </div>
-
-    <div class="seccion">
-      <h3>Datos del proyecto</h3>
-      <div class="campos">
-        <label class="full">Nombre del proyecto
-          <input class="inp" id="f-nombre" type="text" autocomplete="off">
-        </label>
-        <label>Código
-          <input class="inp mono" id="f-codigo" type="text" autocomplete="off" placeholder="Ej. 8%-CUL-014">
-        </label>
-        <label>Línea / fondo
-          <input class="inp" id="f-linea" type="text" list="lineas" autocomplete="off">
-        </label>
-        <label class="full">Organización ejecutora
-          <input class="inp" id="f-organizacion" type="text" autocomplete="off">
-        </label>
-        <label>Monto (CLP)
-          <input class="inp mono monto-inp" id="f-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 1.500.000">
-          <span class="ayuda" id="monto-rendido" hidden></span>
-        </label>
-        <label>Etapa
-          <select class="inp" id="f-etapa"></select>
-        </label>
-        <label class="full">Contacto
-          <input class="inp" id="f-contacto" type="text" autocomplete="off" placeholder="Nombre, correo o teléfono">
-        </label>
+    <div class="tab-panel" id="tab-seg" role="tabpanel" aria-labelledby="tab-btn-seg">
+      <ol class="stepper" id="stepper" aria-label="Etapas del proyecto"></ol>
+      <div class="vista-pasada" id="vista-pasada" hidden>
+        <span id="vista-pasada-txt"></span>
+        <span class="fila">
+          <button class="btn btn-ghost" id="btn-devolver" type="button"></button>
+          <button class="btn" id="btn-volver-actual" type="button"></button>
+        </span>
       </div>
-    </div>
-
-    <div class="seccion" id="sec-sigue">
-      <h3>Lo que sigue</h3>
-      <p class="pista" id="sigue-pista" hidden>La próxima acción y la fecha límite se definen después de guardar el proyecto: ábrelo desde la lista y verás el siguiente paso sugerido.</p>
-      <div id="sigue-cuerpo">
-      <div class="sugerencia" id="sugerencia" hidden>
-        <div class="lbl">Siguiente paso sugerido</div>
-        <p class="sug-txt" id="sug-txt"></p>
-        <ul class="sug-det" id="sug-det"></ul>
-        <div class="fila">
-          <button class="btn btn-ghost" id="btn-sug" type="button">Usar como próxima acción</button>
-          <span class="sug-ok" id="sug-ok" hidden>✓ Es tu próxima acción actual</span>
+      <div class="seccion" id="sec-libre" hidden>
+        <h3 id="libre-titulo"></h3>
+        <p class="pista" id="libre-txt"></p>
+      </div>
+      <div class="seccion" id="sec-check" hidden>
+        <div id="check-actual">
+          <div class="check-cab">
+            <h3 id="check-titulo">Checklist</h3>
+            <span class="check-cuenta" id="check-cuenta"></span>
+          </div>
+          <div class="check-barra" aria-hidden="true"><span id="check-barra"></span></div>
+          <ul class="checklist" id="checklist"></ul>
+        </div>
+        <div class="pagare" id="pagare-fechas">
+          <div class="campos">
+            <div class="campo-fecha" id="pg-ultima-campo">
+              <span class="lbl" id="pg-ultima-lbl">Última rendición</span>
+              <input id="pg-ultima" type="hidden">
+              <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="pg-ultima-lbl pg-ultima-txt">
+                <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                <span class="fecha-txt" id="pg-ultima-txt"></span>
+                <span class="fecha-rel"></span>
+              </button>
+              <div class="cal" hidden></div>
+            </div>
+            <div class="campo-fecha" id="pg-vence-campo">
+              <span class="lbl" id="pg-vence-lbl">Vence el pagaré</span>
+              <input id="pg-vence" type="hidden">
+              <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="pg-vence-lbl pg-vence-txt">
+                <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                <span class="fecha-txt" id="pg-vence-txt"></span>
+                <span class="fecha-rel"></span>
+              </button>
+              <div class="cal" hidden></div>
+            </div>
+          </div>
+          <span class="ayuda">Al elegir la última rendición, el vencimiento queda un año después. Puedes cambiarlo.</span>
         </div>
       </div>
-      <div class="campos">
-        <label class="full">Próxima acción
-          <input class="inp" id="f-accion" type="text" autocomplete="off" placeholder="Qué tengo que hacer o pedir">
-        </label>
-        <div class="full campo-fecha" id="campo-fecha">
+      <div class="seccion" id="sec-cuotas" hidden>
+        <h3>Transferencias</h3>
+        <div class="rend">
+          <div class="cuotas-cant">
+            <span class="lbl" id="lbl-cant-cuotas">Número de cuotas</span>
+            <div class="segmentado" id="cuotas-cant" role="group" aria-labelledby="lbl-cant-cuotas"></div>
+          </div>
+          <div class="rend-resumen" id="cuotas-resumen"></div>
+          <div class="cuotas-grid" id="cuotas-grid"></div>
+          <div class="rend-editor" id="cuota-editor" hidden>
+            <div class="rend-ed-head">
+              <b id="cu-titulo">Cuota</b>
+              <button class="cerrar" id="cu-cerrar" type="button" aria-label="Cerrar cuota">×</button>
+            </div>
+            <div class="lbl" id="cu-lbl-estado">Estado</div>
+            <div class="estados" id="cu-estados" role="group" aria-labelledby="cu-lbl-estado"></div>
+            <div class="campos">
+              <label class="full">Monto de la cuota (CLP)
+                <input class="inp mono monto-inp" id="cu-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 5.000.000">
+                <span class="ayuda" id="cu-suma"></span>
+              </label>
+              <div class="campo-fecha" id="cu-programada-campo">
+                <span class="lbl" id="cu-programada-lbl">Fecha programada</span>
+                <input id="cu-programada" type="hidden">
+                <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="cu-programada-lbl cu-programada-txt">
+                  <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                  <span class="fecha-txt" id="cu-programada-txt"></span>
+                  <span class="fecha-rel"></span>
+                </button>
+                <div class="cal" hidden></div>
+              </div>
+              <div class="campo-fecha" id="cu-transferencia-campo">
+                <span class="lbl" id="cu-transferencia-lbl">Fecha de transferencia</span>
+                <input id="cu-transferencia" type="hidden">
+                <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="cu-transferencia-lbl cu-transferencia-txt">
+                  <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                  <span class="fecha-txt" id="cu-transferencia-txt"></span>
+                  <span class="fecha-rel"></span>
+                </button>
+                <div class="cal" hidden></div>
+              </div>
+              <label class="full">Observaciones
+                <textarea class="inp" id="cu-obs" rows="2" placeholder="N° de resolución, comprobante, banco…"></textarea>
+              </label>
+            </div>
+            <div class="fila rend-ed-pie">
+              <button class="btn btn-ghost" id="cu-cancelar" type="button">Cancelar</button>
+              <button class="btn" id="btn-cuota-guardar" type="button">Guardar cuota</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="seccion" id="sec-rend">
+        <h3>Rendiciones</h3>
+        <div class="rend" id="rend-cuerpo">
+          <div class="rend-actual" id="rend-actual" hidden>
+            <span id="rend-actual-txt"></span>
+            <button class="btn btn-ghost" id="btn-cambiar-periodo" type="button">Cambiar período</button>
+          </div>
+          <div class="rend-elegir" id="rend-elegir" hidden>
+            <div class="rend-temporada">
+              <button type="button" class="cal-nav" id="temp-ant" aria-label="Temporada anterior">‹</button>
+              <span id="temp-txt"></span>
+              <button type="button" class="cal-nav" id="temp-sig" aria-label="Temporada siguiente">›</button>
+            </div>
+            <p class="pista" id="rend-instr"></p>
+            <div class="meses-temp" id="meses-temp" role="group" aria-label="Meses de la temporada"></div>
+            <div class="rend-previa">
+              <span id="rend-previa-txt"></span>
+              <span class="fila">
+                <button class="btn btn-ghost" id="btn-periodo-cancelar" type="button">Cancelar</button>
+                <button class="btn" id="btn-periodo" type="button">Crear rendiciones</button>
+              </span>
+            </div>
+          </div>
+          <div class="rend-resumen" id="rend-resumen"></div>
+          <div class="rend-grid" id="rend-grid"></div>
+          <div class="rend-editor" id="rend-editor" hidden>
+            <div class="rend-ed-head">
+              <b id="re-titulo">Rendición</b>
+              <button class="cerrar" id="re-cerrar" type="button" aria-label="Cerrar rendición">×</button>
+            </div>
+            <div class="lbl" id="re-lbl-estado">Estado</div>
+            <div class="estados" id="re-estados" role="group" aria-labelledby="re-lbl-estado"></div>
+            <div class="campos">
+              <label class="full">Monto rendido (CLP)
+                <input class="inp mono monto-inp" id="re-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 850.000">
+                <span class="ayuda" id="re-acumulado"></span>
+              </label>
+              <div class="campo-fecha" id="re-entrega-campo">
+                  <span class="lbl" id="re-entrega-lbl">Fecha de entrega</span>
+                  <input id="re-entrega" type="hidden">
+                  <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="re-entrega-lbl re-entrega-txt">
+                    <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                    <span class="fecha-txt" id="re-entrega-txt"></span>
+                    <span class="fecha-rel"></span>
+                  </button>
+                  <div class="cal" hidden></div>
+                </div>
+              <div class="campo-fecha" id="re-revision-campo">
+                  <span class="lbl" id="re-revision-lbl">Fecha de revisión</span>
+                  <input id="re-revision" type="hidden">
+                  <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="re-revision-lbl re-revision-txt">
+                    <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
+                    <span class="fecha-txt" id="re-revision-txt"></span>
+                    <span class="fecha-rel"></span>
+                  </button>
+                  <div class="cal" hidden></div>
+                </div>
+              <label class="full">Observaciones
+                <textarea class="inp" id="re-obs" rows="3" placeholder="Qué falta o qué se observó: boletas, montos que no cuadran…"></textarea>
+              </label>
+            </div>
+            <div class="fila rend-ed-pie">
+              <button class="btn btn-ghost" id="re-cancelar" type="button">Cancelar</button>
+              <button class="btn" id="btn-rend-guardar" type="button">Guardar rendición</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="seccion" id="sec-sigue">
+        <h3>Siguiente paso</h3>
+        <div class="sigue">
+          <div class="sigue-accion">
+            <p class="sigue-txt" id="sigue-txt"></p>
+            <span class="ayuda" id="sigue-origen"></span>
+          </div>
+          <button class="btn btn-ghost" id="btn-sigue-editar" type="button">Cambiar</button>
+        </div>
+        <div class="sigue-editor" id="sigue-editor" hidden>
+          <label class="full">Escribe la próxima acción
+            <input class="inp" id="f-accion" type="text" autocomplete="off" placeholder="Qué tengo que hacer o pedir">
+          </label>
+          <div class="fila">
+            <button class="btn btn-ghost" id="btn-sigue-cancelar" type="button">Cancelar</button>
+            <button class="btn" id="btn-sigue-guardar" type="button">Guardar acción</button>
+          </div>
+        </div>
+        <div class="campo-fecha" id="campo-fecha">
           <span class="lbl" id="lbl-fecha">Fecha límite</span>
           <input id="f-fecha" type="hidden">
           <button class="inp fecha-btn" id="fecha-btn" type="button" aria-expanded="false" aria-controls="cal" aria-labelledby="lbl-fecha fecha-txt fecha-rel">
@@ -186,149 +327,65 @@
           <div class="cal" id="cal" hidden></div>
         </div>
       </div>
+      <div class="seccion" id="sec-anotar">
+        <h3>Anotar en la bitácora</h3>
+        <div class="nota-nueva">
+          <textarea class="inp" id="f-nota-rapida" rows="2" placeholder="Qué hiciste o qué pasó: llamada, correo, documento recibido…" aria-label="Anotar en la bitácora"></textarea>
+          <div class="fila"><button class="btn btn-ghost" id="btn-nota-rapida" type="button">Anotar</button></div>
+        </div>
+        <ol class="bitacora mini" id="bitacora-ultimas"></ol>
+      </div>
+      <div class="avanzar" id="avanzar" hidden>
+        <div class="av-txt">
+          <b id="av-titulo"></b>
+          <ul class="av-faltan" id="av-faltan"></ul>
+        </div>
+        <button class="btn btn-avanzar" id="btn-avanzar" type="button"></button>
+      </div>
     </div>
+    <div class="tab-panel" id="tab-datos" role="tabpanel" aria-labelledby="tab-btn-datos" hidden>
+      <div class="seccion">
+        <h3>Datos del proyecto</h3>
+        <div class="campos">
+          <label class="full">Nombre del proyecto
+            <input class="inp" id="f-nombre" type="text" autocomplete="off">
+          </label>
+          <label>Código
+            <input class="inp mono" id="f-codigo" type="text" autocomplete="off" placeholder="Ej. 8%-CUL-014">
+          </label>
+          <label>Línea / fondo
+            <input class="inp" id="f-linea" type="text" list="lineas" autocomplete="off">
+          </label>
+          <label class="full">Organización ejecutora
+            <input class="inp" id="f-organizacion" type="text" autocomplete="off">
+          </label>
+          <label>Monto (CLP)
+            <input class="inp mono monto-inp" id="f-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 1.500.000">
+            <span class="ayuda" id="monto-rendido" hidden></span>
+          </label>
+          <label id="campo-etapa">Etapa en que está
+            <select class="inp" id="f-etapa"></select>
+          </label>
+          <label class="full">Contacto
+            <input class="inp" id="f-contacto" type="text" autocomplete="off" placeholder="Nombre, correo o teléfono">
+          </label>
+        </div>
+      </div>
 
-    </div>
-    <div class="seccion" id="sec-cuotas" hidden>
-      <h3>Transferencias</h3>
-      <div class="rend">
-        <div class="cuotas-cant">
-          <span class="lbl" id="lbl-cant-cuotas">Número de cuotas</span>
-          <div class="segmentado" id="cuotas-cant" role="group" aria-labelledby="lbl-cant-cuotas"></div>
-        </div>
-        <div class="rend-resumen" id="cuotas-resumen"></div>
-        <div class="cuotas-grid" id="cuotas-grid"></div>
-        <div class="rend-editor" id="cuota-editor" hidden>
-          <div class="rend-ed-head">
-            <b id="cu-titulo">Cuota</b>
-            <button class="cerrar" id="cu-cerrar" type="button" aria-label="Cerrar cuota">×</button>
-          </div>
-          <div class="lbl" id="cu-lbl-estado">Estado</div>
-          <div class="estados" id="cu-estados" role="group" aria-labelledby="cu-lbl-estado"></div>
-          <div class="campos">
-            <label class="full">Monto de la cuota (CLP)
-              <input class="inp mono monto-inp" id="cu-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 5.000.000">
-              <span class="ayuda" id="cu-suma"></span>
-            </label>
-            <div class="campo-fecha" id="cu-programada-campo">
-              <span class="lbl" id="cu-programada-lbl">Fecha programada</span>
-              <input id="cu-programada" type="hidden">
-              <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="cu-programada-lbl cu-programada-txt">
-                <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
-                <span class="fecha-txt" id="cu-programada-txt"></span>
-                <span class="fecha-rel"></span>
-              </button>
-              <div class="cal" hidden></div>
-            </div>
-            <div class="campo-fecha" id="cu-transferencia-campo">
-              <span class="lbl" id="cu-transferencia-lbl">Fecha de transferencia</span>
-              <input id="cu-transferencia" type="hidden">
-              <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="cu-transferencia-lbl cu-transferencia-txt">
-                <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
-                <span class="fecha-txt" id="cu-transferencia-txt"></span>
-                <span class="fecha-rel"></span>
-              </button>
-              <div class="cal" hidden></div>
-            </div>
-            <label class="full">Observaciones
-              <textarea class="inp" id="cu-obs" rows="2" placeholder="N° de resolución, comprobante, banco…"></textarea>
-            </label>
-          </div>
-          <div class="fila rend-ed-pie">
-            <button class="btn btn-ghost" id="cu-cancelar" type="button">Cancelar</button>
-            <button class="btn" id="btn-cuota-guardar" type="button">Guardar cuota</button>
-          </div>
-        </div>
+      <div class="seccion">
+        <h3>Notas generales</h3>
+        <textarea class="inp" id="f-notas" rows="3" aria-label="Notas generales"></textarea>
       </div>
     </div>
-    <div class="seccion" id="sec-rend">
-      <h3>Rendiciones</h3>
-      <p class="pista" id="rend-pista" hidden>Las rendiciones se configuran después de guardar el proyecto.</p>
-      <div class="rend" id="rend-cuerpo">
-        <div class="rend-actual" id="rend-actual" hidden>
-          <span id="rend-actual-txt"></span>
-          <button class="btn btn-ghost" id="btn-cambiar-periodo" type="button">Cambiar período</button>
+    <div class="tab-panel" id="tab-bit" role="tabpanel" aria-labelledby="tab-btn-bit" hidden>
+      <div class="seccion" id="sec-bitacora">
+        <div class="nota-nueva" id="nota-nueva">
+          <textarea class="inp" id="f-nota" rows="2" placeholder="Qué pasó hoy: llamada, correo, documento recibido…" aria-label="Nueva entrada de bitácora"></textarea>
+          <div class="fila"><button class="btn btn-ghost" id="btn-nota" type="button">Agregar a la bitácora</button></div>
         </div>
-        <div class="rend-elegir" id="rend-elegir" hidden>
-          <div class="rend-temporada">
-            <button type="button" class="cal-nav" id="temp-ant" aria-label="Temporada anterior">‹</button>
-            <span id="temp-txt"></span>
-            <button type="button" class="cal-nav" id="temp-sig" aria-label="Temporada siguiente">›</button>
-          </div>
-          <p class="pista" id="rend-instr"></p>
-          <div class="meses-temp" id="meses-temp" role="group" aria-label="Meses de la temporada"></div>
-          <div class="rend-previa">
-            <span id="rend-previa-txt"></span>
-            <span class="fila">
-              <button class="btn btn-ghost" id="btn-periodo-cancelar" type="button">Cancelar</button>
-              <button class="btn" id="btn-periodo" type="button">Crear rendiciones</button>
-            </span>
-          </div>
-        </div>
-        <div class="rend-resumen" id="rend-resumen"></div>
-        <div class="rend-grid" id="rend-grid"></div>
-        <div class="rend-editor" id="rend-editor" hidden>
-          <div class="rend-ed-head">
-            <b id="re-titulo">Rendición</b>
-            <button class="cerrar" id="re-cerrar" type="button" aria-label="Cerrar rendición">×</button>
-          </div>
-          <div class="lbl" id="re-lbl-estado">Estado</div>
-          <div class="estados" id="re-estados" role="group" aria-labelledby="re-lbl-estado"></div>
-          <div class="campos">
-            <label class="full">Monto rendido (CLP)
-              <input class="inp mono monto-inp" id="re-monto" type="text" inputmode="numeric" autocomplete="off" maxlength="15" placeholder="Ej. 850.000">
-              <span class="ayuda" id="re-acumulado"></span>
-            </label>
-            <div class="campo-fecha" id="re-entrega-campo">
-                <span class="lbl" id="re-entrega-lbl">Fecha de entrega</span>
-                <input id="re-entrega" type="hidden">
-                <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="re-entrega-lbl re-entrega-txt">
-                  <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
-                  <span class="fecha-txt" id="re-entrega-txt"></span>
-                  <span class="fecha-rel"></span>
-                </button>
-                <div class="cal" hidden></div>
-              </div>
-            <div class="campo-fecha" id="re-revision-campo">
-                <span class="lbl" id="re-revision-lbl">Fecha de revisión</span>
-                <input id="re-revision" type="hidden">
-                <button class="inp fecha-btn" type="button" aria-expanded="false" aria-labelledby="re-revision-lbl re-revision-txt">
-                  <svg class="fecha-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
-                  <span class="fecha-txt" id="re-revision-txt"></span>
-                  <span class="fecha-rel"></span>
-                </button>
-                <div class="cal" hidden></div>
-              </div>
-            <label class="full">Observaciones
-              <textarea class="inp" id="re-obs" rows="3" placeholder="Qué falta o qué se observó: boletas, montos que no cuadran…"></textarea>
-            </label>
-          </div>
-          <div class="fila rend-ed-pie">
-            <button class="btn btn-ghost" id="re-cancelar" type="button">Cancelar</button>
-            <button class="btn" id="btn-rend-guardar" type="button">Guardar rendición</button>
-          </div>
-        </div>
+        <ol class="bitacora" id="bitacora"></ol>
+        <button class="btn btn-ghost ver-historial" id="btn-historial" type="button" hidden></button>
       </div>
-    </div>
-
-    <div class="seccion">
-      <h3>Notas generales</h3>
-      <textarea class="inp" id="f-notas" rows="3" aria-label="Notas generales"></textarea>
-    </div>
-
-    <div class="seccion" id="sec-bitacora">
-      <h3>Bitácora</h3>
-      <p class="pista" id="bitacora-pista" hidden>La bitácora se habilita al guardar el proyecto. Después ábrelo desde la lista para anotar llamadas, correos o documentos recibidos.</p>
-      <div class="nota-nueva" id="nota-nueva">
-        <textarea class="inp" id="f-nota" rows="2" placeholder="Qué pasó hoy: llamada, correo, documento recibido…" aria-label="Nueva entrada de bitácora"></textarea>
-        <div class="fila"><button class="btn btn-ghost" id="btn-nota" type="button">Agregar a la bitácora</button></div>
-      </div>
-      <div class="avance-nota" id="avance-nota" hidden>
-        <span id="avance-nota-txt"></span>
-        <button class="btn" id="btn-avanzar-nota" type="button"></button>
-      </div>
-      <ol class="bitacora" id="bitacora"></ol>
-      <button class="btn btn-ghost ver-historial" id="btn-historial" type="button" hidden></button>
     </div>
   </form>
   <div class="d-foot">

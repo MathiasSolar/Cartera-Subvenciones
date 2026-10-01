@@ -158,3 +158,23 @@ class CuotaIn(BaseModel):
         for k in ("fecha_programada", "fecha_transferencia"):
             d[k] = d[k].isoformat() if d[k] else None
         return d
+
+
+class SiguienteIn(BaseModel):
+    accion: str = Field(default="", max_length=500)
+    fecha: Optional[date] = None
+    manual: bool = False   # True: la escribió el usuario y la app no la reemplaza
+
+    @field_validator("accion")
+    @classmethod
+    def limpiar(cls, v: str) -> str:
+        return v.strip()
+
+
+class MarcaIn(BaseModel):
+    hecho: bool
+
+
+class PagareIn(BaseModel):
+    ultima_rendicion: Optional[date] = None
+    vence_pagare: Optional[date] = None   # si no viene: un año después de la última rendición

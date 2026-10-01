@@ -10,13 +10,14 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from pydantic import ValidationError
 from fastapi.staticfiles import StaticFiles
 
-from .config import (CATEGORIAS_FORMATO, ESTADOS_CUOTA, ESTADOS_RENDICION, ETAPA_RENDICIONES,
+from .config import (CATEGORIAS_FORMATO, CHECKLIST_POR_ETAPA, ESTADOS_CUOTA, ESTADOS_RENDICION, ETAPA_RENDICIONES,
                      ETAPA_TRANSFERENCIA, ETAPAS, LINEAS, MAX_CUOTAS, MAX_FORMATO_MB, PASOS_POR_ETAPA,
                      static_dir)
-from . import respaldo
+from . import checklist, respaldo
 from .db import ahora, get_conn, migrar
 from .rendiciones import libro_excel, meses_entre, nombre_archivo, nombre_mes, tiene_datos
-from .schemas import CantidadCuotasIn, CuotaIn, FormatoIn, MenuIn, NotaIn, PanelIn, PeriodoIn, ProyectoIn, RendicionIn, TemaIn
+from .schemas import (CantidadCuotasIn, CuotaIn, FormatoIn, MarcaIn, MenuIn, NotaIn, PagareIn, PanelIn, PeriodoIn,
+                      ProyectoIn, RendicionIn, SiguienteIn, TemaIn)
 
 CAMPOS = ["nombre", "codigo", "linea", "organizacion", "monto", "etapa", "anio",
           "contacto", "accion", "fecha", "notas"]
@@ -58,6 +59,8 @@ def con_bitacora(conn: sqlite3.Connection, pid: int) -> dict:
     p["rendiciones"] = rendiciones_de(conn, pid)
     p["cuotas"] = cuotas_de(conn, pid)
     p["registro_en_etapa"] = hay_registro_en_la_etapa(conn, pid)   # para habilitar "Pasar a …"
+    p["checklist"] = checklist.estado(conn, pid, p["etapa"])          # en etapas con checklist, en vez del registro
+    p["checklist_hechas"] = checklist.marcadas(conn, pid)             # todas, para el resumen de etapas anteriores
     return p
 
 
@@ -83,6 +86,7 @@ def config(conn: sqlite3.Connection = Depends(get_conn)):
             "etapa_rendiciones": ETAPA_RENDICIONES, "categorias_formato": CATEGORIAS_FORMATO,
             "etapa_transferencia": ETAPA_TRANSFERENCIA, "estados_cuota": ESTADOS_CUOTA, "max_cuotas": MAX_CUOTAS,
             "max_formato_mb": MAX_FORMATO_MB, "pasos_por_etapa": PASOS_POR_ETAPA,
+            "checklist_por_etapa": CHECKLIST_POR_ETAPA,
             "tema": ajustes.get("tema"), "menu": ajustes.get("menu"), "panel": ajustes.get("panel")}
 
 
@@ -137,6 +141,9 @@ def detalle(pid: int, conn: sqlite3.Connection = Depends(get_conn)):
 def crear(datos: ProyectoIn, conn: sqlite3.Connection = Depends(get_conn)):
     d = datos.a_fila()
     d["anio"] = d["anio"] or date.today().year
+    if not d["accion"]:
+        d["accion"], fecha = primer_paso(d["etapa"])
+        d["fecha"] = d["fecha"] or fecha
     t = ahora()
     marcas = ", ".join(["?"] * (len(CAMPOS) + 2))
     cur = conn.execute(
@@ -154,8 +161,7 @@ def actualizar(pid: int, datos: ProyectoIn, conn: sqlite3.Connection = Depends(g
     d = datos.a_fila()
     d["anio"] = d["anio"] or actual["anio"] or date.today().year   # editar no cambia el año
     if actual["etapa"] in ETAPAS and d["etapa"] in ETAPAS and ETAPAS.index(d["etapa"]) > ETAPAS.index(actual["etapa"]):
-        exigir_registro(conn, pid, d["etapa"])   # avanzar exige registro; retroceder para corregir, no
-        exigir_primera_cuota(conn, pid, actual["etapa"], d["etapa"])
+        exigir_para_avanzar(conn, pid, actual["etapa"], d["etapa"])   # retroceder para corregir no exige nada
     asignaciones = ", ".join(f"{c} = ?" for c in CAMPOS)
     conn.execute(
         f"UPDATE proyectos SET {asignaciones}, actualizado = ? WHERE id = ?",
@@ -197,6 +203,31 @@ def exigir_primera_cuota(conn: sqlite3.Connection, pid: int, desde: str, hacia: 
         )
 
 
+def exigir_checklist(conn: sqlite3.Connection, pid: int, desde: str, hacia: str) -> None:
+    """Cada etapa con checklist que se deja atrás debe tenerlo completo."""
+    for etapa in checklist.etapas_entre(desde, hacia):
+        faltan = checklist.pendientes(conn, pid, etapa)
+        if not faltan:
+            continue
+        if etapa != desde:
+            raise HTTPException(status_code=409, detail=f"Para llegar a {hacia} hay que pasar por {etapa} "
+                                                        "y completar su checklist.")
+        lista = "; ".join(t["texto"] for t in faltan)
+        raise HTTPException(status_code=409, detail=f"Antes de pasar a {hacia}, completa el checklist de {etapa}. "
+                                                    f"Falta: {lista}.")
+
+
+def exigir_para_avanzar(conn: sqlite3.Connection, pid: int, desde: str, hacia: str) -> None:
+    """Las etapas con checklist exigen completarlo (las tareas marcadas quedan en la bitácora);
+    las demás, un registro en la bitácora de lo hecho."""
+    if checklist.tareas(desde):
+        exigir_checklist(conn, pid, desde, hacia)
+    else:
+        exigir_registro(conn, pid, hacia)
+        exigir_checklist(conn, pid, desde, hacia)
+    exigir_primera_cuota(conn, pid, desde, hacia)
+
+
 def primer_paso(etapa: str) -> tuple[str, str | None]:
     """Próxima acción y fecha (a 7 días) con que parte una etapa."""
     en_7_dias = (date.today() + timedelta(days=7)).isoformat()
@@ -204,7 +235,7 @@ def primer_paso(etapa: str) -> tuple[str, str | None]:
         return "Definir el período de rendiciones", en_7_dias
     if etapa == ETAPA_TRANSFERENCIA:
         return "Definir las cuotas de transferencia", en_7_dias
-    pasos = PASOS_POR_ETAPA.get(etapa) or []
+    pasos = [t["texto"] for t in checklist.tareas(etapa)] or PASOS_POR_ETAPA.get(etapa) or []
     return (pasos[0], en_7_dias) if pasos else ("", None)
 
 
@@ -215,14 +246,78 @@ def avanzar(pid: int, conn: sqlite3.Connection = Depends(get_conn)):
     if i < 0 or i >= len(ETAPAS) - 1:
         raise HTTPException(status_code=409, detail="El proyecto ya está en la última etapa")
     siguiente = ETAPAS[i + 1]
-    exigir_registro(conn, pid, siguiente)
-    exigir_primera_cuota(conn, pid, actual["etapa"], siguiente)
+    exigir_para_avanzar(conn, pid, actual["etapa"], siguiente)
     accion, fecha = primer_paso(siguiente)   # la próxima acción queda con el primer paso de la nueva etapa
     conn.execute(
-        "UPDATE proyectos SET etapa = ?, accion = ?, fecha = ?, actualizado = ? WHERE id = ?",
+        "UPDATE proyectos SET etapa = ?, accion = ?, fecha = ?, accion_manual = 0, actualizado = ? WHERE id = ?",
         (siguiente, accion, fecha, ahora(), pid),
     )
     registrar(conn, pid, f"Etapa: {actual['etapa']} → {siguiente}", sistema=True)
+    return con_bitacora(conn, pid)
+
+
+def fecha_corta(iso: str) -> str:
+    return date.fromisoformat(iso).strftime("%d-%m-%Y")
+
+
+@app.put("/api/proyectos/{pid}/checklist/{clave}")
+def marcar_tarea(pid: int, clave: str, datos: MarcaIn, conn: sqlite3.Connection = Depends(get_conn)):
+    """Marca o desmarca una tarea del checklist de la etapa actual o de una anterior (para corregir);
+    queda en la bitácora."""
+    p = obtener(conn, pid)
+    encontrada = checklist.buscar_hasta(p["etapa"], clave)
+    if encontrada is None:
+        raise HTTPException(status_code=404, detail="Esa tarea no es del checklist de la etapa actual "
+                                                    "ni de una etapa anterior.")
+    etapa, tarea, sub = encontrada
+    nombre = f"{tarea['texto']}: {sub['texto']}" if sub else tarea["texto"]
+    ya = clave in checklist.marcadas(conn, pid)
+    t = ahora()
+    if datos.hecho and not ya:
+        conn.execute("INSERT INTO checklist (proyecto_id, clave, hecho) VALUES (?, ?, ?)", (pid, clave, t))
+        registrar(conn, pid, f"✓ {nombre}", sistema=True)
+        # Si la próxima acción era esta tarea y ya quedó lista, pasa a la siguiente pendiente
+        faltan = checklist.pendientes(conn, pid, p["etapa"])
+        if etapa == p["etapa"] and p["accion"] == tarea["texto"] and tarea not in faltan:
+            i = ETAPAS.index(p["etapa"])
+            accion = faltan[0]["texto"] if faltan else f"Checklist completo: pasar a {ETAPAS[i + 1]}"
+            conn.execute("UPDATE proyectos SET accion = ? WHERE id = ?", (accion, pid))
+    elif not datos.hecho and ya:
+        conn.execute("DELETE FROM checklist WHERE proyecto_id = ? AND clave = ?", (pid, clave))
+        registrar(conn, pid, f"Se desmarcó: {nombre}", sistema=True)
+    conn.execute("UPDATE proyectos SET actualizado = ? WHERE id = ?", (t, pid))
+    return con_bitacora(conn, pid)
+
+
+@app.put("/api/proyectos/{pid}/pagare")
+def fechas_pagare(pid: int, datos: PagareIn, conn: sqlite3.Connection = Depends(get_conn)):
+    """Fechas del pagaré. Sin vencimiento explícito, vence un año después de la última rendición."""
+    p = obtener(conn, pid)
+    ultima = datos.ultima_rendicion
+    vence = datos.vence_pagare if "vence_pagare" in datos.model_fields_set else (
+        checklist.vence_pagare(ultima) if ultima else None)
+    ultima_iso = ultima.isoformat() if ultima else None
+    vence_iso = vence.isoformat() if vence else None
+    conn.execute("UPDATE proyectos SET ultima_rendicion = ?, vence_pagare = ?, actualizado = ? WHERE id = ?",
+                 (ultima_iso, vence_iso, ahora(), pid))
+    if vence_iso != p["vence_pagare"]:
+        if vence_iso:
+            texto = f"Pagaré: vence el {fecha_corta(vence_iso)}"
+            if ultima_iso:
+                texto += f" (última rendición: {fecha_corta(ultima_iso)})"
+        else:
+            texto = "Pagaré: se quitó la fecha de vencimiento"
+        registrar(conn, pid, texto, sistema=True)
+    return con_bitacora(conn, pid)
+
+
+@app.put("/api/proyectos/{pid}/siguiente")
+def siguiente_paso(pid: int, datos: SiguienteIn, conn: sqlite3.Connection = Depends(get_conn)):
+    """Próxima acción y fecha límite. La interfaz la mantiene al día con el flujo (manual=False)
+    o guarda la que escribió el usuario (manual=True)."""
+    obtener(conn, pid)
+    conn.execute("UPDATE proyectos SET accion = ?, fecha = ?, accion_manual = ?, actualizado = ? WHERE id = ?",
+                 (datos.accion, datos.fecha.isoformat() if datos.fecha else None, int(datos.manual), ahora(), pid))
     return con_bitacora(conn, pid)
 
 
@@ -336,7 +431,7 @@ def actualizar_cuota(cid: int, datos: CuotaIn, conn: sqlite3.Connection = Depend
     if actual["estado"] != d["estado"]:
         if d["estado"] == "Transferida":
             monto = f"${d['monto']:,}".replace(",", ".") if d["monto"] is not None else "sin monto"
-            cuando = date.fromisoformat(d["fecha_transferencia"]).strftime("%d-%m-%Y")
+            cuando = fecha_corta(d["fecha_transferencia"])
             texto = f"{ordinal(actual['numero'])} cuota transferida: {monto} ({cuando})"
         else:
             texto = f"{ordinal(actual['numero'])} cuota vuelve a Programada"

@@ -47,7 +47,7 @@ def nombre_archivo() -> str:
 
 
 def libro_excel(conn: sqlite3.Connection) -> bytes:
-    """Excel con dos hojas: Resumen (proyecto × mes) y Detalle (una fila por rendición)."""
+    """Excel con tres hojas: Resumen (proyecto × mes), Detalle (una fila por rendición) y Transferencias."""
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
@@ -90,11 +90,11 @@ def libro_excel(conn: sqlite3.Connection) -> bytes:
     for f in filas:
         por_proyecto.setdefault(f["pid"], {})[f["mes"]] = f
     proyectos = conn.execute(
-        "SELECT id, codigo, nombre, organizacion, linea, etapa, anio, monto FROM proyectos ORDER BY nombre, id"
+        "SELECT id, codigo, nombre, organizacion, linea, etapa, anio, monto, vence_pagare FROM proyectos ORDER BY nombre, id"
     ).fetchall()
 
     fijas = ["Código", "Proyecto", "Organización", "Línea", "Etapa", "Año", "Período",
-             "Monto proyecto", "Total rendido", "Por rendir"]
+             "Monto proyecto", "Total rendido", "Por rendir", "Vence pagaré"]
     ws.append(fijas + [nombre_mes(m) for m in meses] + ESTADOS_RENDICION)
     for p in proyectos:
         rs = por_proyecto.get(p["id"], {})
@@ -107,19 +107,21 @@ def libro_excel(conn: sqlite3.Connection) -> bytes:
         por_rendir = (p["monto"] - rendido) if p["monto"] is not None else None
         conteo = [sum(1 for r in rs.values() if r["estado"] == est) for est in ESTADOS_RENDICION]
         ws.append([p["codigo"], p["nombre"], p["organizacion"], p["linea"], p["etapa"], p["anio"], periodo,
-                   p["monto"], rendido, por_rendir]
+                   p["monto"], rendido, por_rendir,
+                   date.fromisoformat(p["vence_pagare"]) if p["vence_pagare"] else None]
                   + [rs[m]["estado"] if m in rs else "" for m in meses] + conteo)
         fila = ws.max_row
         if not rs:
             ws.cell(row=fila, column=7).font = Font(italic=True, color="5B6964")
         for col in (8, 9, 10):
             ws.cell(row=fila, column=col).number_format = clp
+        ws.cell(row=fila, column=11).number_format = "dd-mm-yyyy"
         for j, m in enumerate(meses, start=len(fijas) + 1):
             if m in rs:
                 c = ws.cell(row=fila, column=j)
                 pintar_estado(c, rs[m]["estado"])
                 c.alignment = Alignment(horizontal="center")
-    estilo_cabecera(ws, [14, 40, 30, 18, 14, 8, 24, 15, 15, 15] + [16] * len(meses) + [11] * len(ESTADOS_RENDICION))
+    estilo_cabecera(ws, [14, 40, 30, 18, 14, 8, 24, 15, 15, 15, 13] + [16] * len(meses) + [11] * len(ESTADOS_RENDICION))
     ws.freeze_panes = "C2"
 
     # --- Hoja 2: Detalle ---

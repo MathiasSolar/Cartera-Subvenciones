@@ -32,30 +32,30 @@ def nota(client, pid, texto="Revisé los antecedentes"):
 
 
 def test_cambio_de_etapa_queda_en_bitacora(client):
-    p = nuevo(client)
+    p = nuevo(client, etapa="Ejecución")
     datos = {k: p[k] for k in ["nombre", "codigo", "linea", "organizacion", "monto",
                                "contacto", "accion", "fecha", "notas"]}
-    # Avanzar sin registro en la bitácora no se permite
-    r = client.put(f"/api/proyectos/{p['id']}", json={**datos, "etapa": "Convenio"})
+    # En una etapa sin checklist, avanzar sin registro en la bitácora no se permite
+    r = client.put(f"/api/proyectos/{p['id']}", json={**datos, "etapa": "Rendición"})
     assert r.status_code == 409 and "bitácora" in r.json()["detail"]
     nota(client, p["id"])
-    r = client.put(f"/api/proyectos/{p['id']}", json={**datos, "etapa": "Convenio"})
+    r = client.put(f"/api/proyectos/{p['id']}", json={**datos, "etapa": "Rendición"})
     assert r.status_code == 200
-    assert r.json()["bitacora"][0]["texto"] == "Etapa: Adjudicado → Convenio"
+    assert r.json()["bitacora"][0]["texto"] == "Etapa: Ejecución → Rendición"
     # Retroceder para corregir sí se permite sin registro
-    assert client.put(f"/api/proyectos/{p['id']}", json={**datos, "etapa": "Adjudicado"}).status_code == 200
+    assert client.put(f"/api/proyectos/{p['id']}", json={**datos, "etapa": "Ejecución"}).status_code == 200
 
 
 def test_avanzar_exige_registro_y_pone_el_primer_paso(client):
-    p = nuevo(client, etapa="Adjudicado", accion="Algo antiguo")
+    p = nuevo(client, etapa="Ejecución", accion="Algo antiguo")
     r = client.post(f"/api/proyectos/{p['id']}/avanzar")
-    assert r.status_code == 409 and "Convenio" in r.json()["detail"]
+    assert r.status_code == 409 and "Rendición" in r.json()["detail"]
 
-    nota(client, p["id"], "Convenio redactado")
+    nota(client, p["id"], "Ejecución terminada")
     r = client.post(f"/api/proyectos/{p['id']}/avanzar")
     assert r.status_code == 200
-    assert r.json()["etapa"] == "Convenio"
-    assert r.json()["accion"] == "Enviar convenio a firma" and r.json()["fecha"]
+    assert r.json()["etapa"] == "Rendición"
+    assert r.json()["accion"] == "Definir el período de rendiciones" and r.json()["fecha"]
 
     # En la nueva etapa hay que volver a registrar antes de avanzar
     assert client.post(f"/api/proyectos/{p['id']}/avanzar").status_code == 409
@@ -190,10 +190,11 @@ def test_exportar_excel(client):
     assert wb.sheetnames == ["Resumen", "Detalle", "Transferencias"]
 
     resumen = [[c.value for c in fila] for fila in wb["Resumen"].iter_rows()]
-    assert resumen[0][:13] == ["Código", "Proyecto", "Organización", "Línea", "Etapa", "Año", "Período",
-                               "Monto proyecto", "Total rendido", "Por rendir", "sep 2026", "oct 2026", "nov 2026"]
+    assert resumen[0][:14] == ["Código", "Proyecto", "Organización", "Línea", "Etapa", "Año", "Período",
+                               "Monto proyecto", "Total rendido", "Por rendir", "Vence pagaré",
+                               "sep 2026", "oct 2026", "nov 2026"]
     assert resumen[1][6] == "sep 2026 a nov 2026 (3)"
-    assert resumen[1][8:13] == [1_400_000, 1_600_000, "Aprobada", "Incompleta", "Pendiente"]
+    assert resumen[1][8:14] == [1_400_000, 1_600_000, None, "Aprobada", "Incompleta", "Pendiente"]
 
     detalle = [[c.value for c in fila] for fila in wb["Detalle"].iter_rows()]
     assert len(detalle) == 4
@@ -240,9 +241,11 @@ def test_conexion_usable_desde_otro_hilo(tmp_path, monkeypatch):
 def test_pasos_por_etapa(client):
     cfg = client.get("/api/config").json()
     pasos = cfg["pasos_por_etapa"]
-    # Toda etapa (menos Rendición, que se calcula con las rendiciones) tiene su entrada
-    assert set(pasos) == set(cfg["etapas"]) - {cfg["etapa_rendiciones"]}
-    assert pasos["Convenio"][0] == "Enviar convenio a firma" and len(pasos["Convenio"]) == 2
+    # Toda etapa tiene sus pasos, salvo Rendición (se calcula con las rendiciones) y las que tienen checklist
+    con_checklist = set(cfg["checklist_por_etapa"])
+    assert con_checklist == {"Adjudicado", "Convenio"}
+    assert set(pasos) == set(cfg["etapas"]) - {cfg["etapa_rendiciones"]} - con_checklist
+    assert pasos["Ejecución"] == ["Hacer seguimiento a la ejecución"]
     assert pasos["Cerrado"] == []   # sin sugerencia
 
 
@@ -285,7 +288,7 @@ def test_migracion_etapas_anteriores_pasan_a_adjudicado(tmp_path):
     assert filas["A"]["etapa"] == "Adjudicado" and filas["A"]["accion"] == "Preparar el convenio"
     assert filas["B"]["etapa"] == "Adjudicado" and filas["B"]["accion"] == "Llamar al municipio"   # lo escrito se respeta
     assert filas["C"]["etapa"] == "Rendición"
-    notas = [r["texto"] for r in c.execute("SELECT texto FROM bitacora ORDER BY id")]
+    notas = [r["texto"] for r in c.execute("SELECT texto FROM bitacora WHERE texto LIKE 'Etapa:%' ORDER BY id")]
     assert "Etapa: Postulación → Adjudicado (el seguimiento ahora empieza en Adjudicado)" in notas
     assert len(notas) == 2
     c.close()

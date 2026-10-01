@@ -100,6 +100,46 @@ MIGRACIONES = [
                          'Pedir antecedentes faltantes a la organización', 'Esperar resultado de la evaluación');
     UPDATE proyectos SET etapa = 'Adjudicado' WHERE etapa IN ('Postulación', 'Admisibilidad', 'Evaluación');
     """,
+    """
+    -- Tareas marcadas del checklist de cada etapa (CHECKLIST_POR_ETAPA en config.py)
+    CREATE TABLE checklist (
+        proyecto_id  INTEGER NOT NULL REFERENCES proyectos(id) ON DELETE CASCADE,
+        clave        TEXT    NOT NULL,
+        hecho        TEXT    NOT NULL,   -- cuándo se marcó
+        PRIMARY KEY (proyecto_id, clave)
+    );
+    ALTER TABLE proyectos ADD COLUMN ultima_rendicion TEXT;   -- para calcular el pagaré
+    ALTER TABLE proyectos ADD COLUMN vence_pagare TEXT;       -- un año después de la última rendición
+    """,
+    """
+    -- Los proyectos que ya habían pasado Adjudicado o Convenio antes de que existiera el checklist
+    -- quedan con esos checklists completos (si no, el resumen saldría vacío).
+    INSERT INTO bitacora (proyecto_id, fecha, texto, sistema)
+        SELECT p.id, strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'),
+               'Checklist de Adjudicado marcado como completo: el proyecto ya había pasado esa etapa', 1
+        FROM proyectos p WHERE p.etapa IN ('Convenio', 'Transferencia', 'Ejecución', 'Rendición', 'Cerrado')
+          AND (SELECT COUNT(*) FROM checklist c WHERE c.proyecto_id = p.id AND c.clave IN ('secpir', 'doc-cdp', 'doc-resolucion', 'doc-declaracion', 'doc-pauta', 'doc-fraccionamiento', 'doc-core', 'doc-inhabilidad', 'domo', 'firmado')) < 10;
+    INSERT OR IGNORE INTO checklist (proyecto_id, clave, hecho)
+        SELECT p.id, k.clave, strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')
+        FROM proyectos p, (SELECT 'secpir' AS clave UNION ALL SELECT 'doc-cdp' AS clave UNION ALL SELECT 'doc-resolucion' AS clave UNION ALL SELECT 'doc-declaracion' AS clave UNION ALL SELECT 'doc-pauta' AS clave UNION ALL SELECT 'doc-fraccionamiento' AS clave UNION ALL SELECT 'doc-core' AS clave UNION ALL SELECT 'doc-inhabilidad' AS clave UNION ALL SELECT 'domo' AS clave UNION ALL SELECT 'firmado' AS clave) AS k WHERE p.etapa IN ('Convenio', 'Transferencia', 'Ejecución', 'Rendición', 'Cerrado');
+    INSERT INTO bitacora (proyecto_id, fecha, texto, sistema)
+        SELECT p.id, strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now'),
+               'Checklist de Convenio marcado como completo: el proyecto ya había pasado esa etapa', 1
+        FROM proyectos p WHERE p.etapa IN ('Transferencia', 'Ejecución', 'Rendición', 'Cerrado')
+          AND (SELECT COUNT(*) FROM checklist c WHERE c.proyecto_id = p.id AND c.clave IN ('convenio', 'pagare', 'envio', 'partes')) < 4;
+    INSERT OR IGNORE INTO checklist (proyecto_id, clave, hecho)
+        SELECT p.id, k.clave, strftime('%Y-%m-%dT%H:%M:%S+00:00', 'now')
+        FROM proyectos p, (SELECT 'convenio' AS clave UNION ALL SELECT 'pagare' AS clave UNION ALL SELECT 'envio' AS clave UNION ALL SELECT 'partes' AS clave) AS k WHERE p.etapa IN ('Transferencia', 'Ejecución', 'Rendición', 'Cerrado');
+    """,
+    """
+    -- La tarea de subir el CDP es en DocDigital (entrando como DPIR), no en "DOMO DPIR"
+    UPDATE checklist SET clave = 'docdigital' WHERE clave = 'domo';
+    UPDATE proyectos SET accion = 'Subir el CDP y la resolución a DocDigital para la firma de las jefaturas' WHERE accion = 'Subir el CDP y la resolución a DOMO DPIR para la firma de las jefaturas';
+    """,
+    """
+    -- La próxima acción la pone la app según el flujo, salvo que el usuario escriba otra
+    ALTER TABLE proyectos ADD COLUMN accion_manual INTEGER NOT NULL DEFAULT 0;
+    """,
 ]
 
 

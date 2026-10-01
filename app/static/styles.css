@@ -518,3 +518,107 @@ body{padding-left:var(--sb-ancho)}
 .cuota.atrasada .e{color:var(--warn)}
 .cuota[aria-pressed="true"]{box-shadow:0 0 0 2px var(--ink)}
 .rend-resumen .exceso, .ayuda .exceso{color:var(--crit); font-weight:600}
+
+/* ---------- Checklist de la etapa (Adjudicado, Convenio) ---------- */
+.check-cab{display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:8px}
+.check-cab h3{margin:0}
+.check-cuenta{font-size:13px; color:var(--muted); font-family:var(--mono)}
+.check-cuenta.ok{color:var(--ok); font-weight:600; font-family:inherit}
+.check-barra{height:6px; border-radius:999px; background:var(--surface-2); overflow:hidden; margin-bottom:6px}
+.check-barra span{display:block; height:100%; width:0; border-radius:inherit; background:var(--accent); transition:width .25s ease}
+.checklist{list-style:none; margin:0; padding:0}
+.tarea{display:grid; gap:8px; padding:10px 0}
+.tarea + .tarea{border-top:1px solid var(--line)}
+.check{position:relative; display:flex; align-items:flex-start; gap:10px; font-size:14px; font-weight:400; letter-spacing:0; text-transform:none; line-height:1.4; color:var(--ink); cursor:pointer}
+.check .caja{flex:none; display:grid; place-items:center; width:20px; height:20px; border:1.5px solid var(--muted); border-radius:5px; background:var(--surface); color:transparent; transition:background .12s, border-color .12s}
+.check:hover .caja{border-color:var(--accent)}
+.check input:focus-visible + .caja{outline:2px solid var(--accent); outline-offset:2px}
+.check.hecha .caja{background:var(--ok); border-color:var(--ok); color:var(--surface)}
+.check.hecha .txt{color:var(--muted)}
+.check .txt{flex:1; min-width:0}
+.check .cuando{flex:none; margin-top:1px; font-size:12px; font-family:var(--mono); color:var(--muted)}
+.check.grupo{cursor:default}
+.check.grupo .caja{border-style:dashed}
+.check.grupo.hecha .caja{border-style:solid}
+.check.grupo:hover .caja{border-color:var(--muted)}
+.check.grupo.hecha:hover .caja{border-color:var(--ok)}
+.subtareas{display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:6px 14px; padding-left:30px}
+.subtareas .check{font-size:13.5px}
+.subtareas .caja{width:18px; height:18px}
+.como{padding-left:30px; font-size:13.5px}
+.como summary{width:max-content; cursor:pointer; color:var(--accent); font-weight:500}
+.como ol{display:grid; gap:5px; margin:8px 0 2px; padding-left:20px}
+.pagare{display:grid; gap:8px; padding-left:30px}
+@media (max-width:480px){ .subtareas, .como, .pagare{padding-left:0} }
+.check-anteriores{display:grid; gap:6px}
+#check-actual:not([hidden]) + .check-anteriores{margin-top:18px}
+.check-resumen{border:1px solid var(--line); border-radius:8px; background:var(--surface)}
+.check-resumen > summary{display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; padding:10px 12px; cursor:pointer; font-size:14px; list-style:none}
+.check-resumen > summary::-webkit-details-marker{display:none}
+.check-resumen > summary::after{content:"▸"; margin-left:auto; color:var(--muted); transition:transform .15s}
+.check-resumen[open] > summary::after{transform:rotate(90deg)}
+.check-resumen > summary:hover{background:var(--surface-2); border-radius:8px}
+.check-resumen .res-ico{display:grid; place-items:center; flex:none; width:20px; height:20px; border:1.5px dashed var(--muted); border-radius:5px; color:var(--surface)}
+.check-resumen .res-ico.ok{border:0; background:var(--ok)}
+.check-resumen .res-det{font-size:13px; color:var(--muted)}
+.check-resumen .res-det.falta{color:var(--warn); font-weight:500}
+.check-resumen > .checklist{padding:0 12px 4px; border-top:1px solid var(--line)}
+
+/* ---------- Panel del proyecto: pestañas y flujo de seguimiento ---------- */
+.d-tabs{display:flex; gap:4px; padding:0 20px; border-bottom:1px solid var(--line)}
+.drawer.grande .d-tabs{padding-inline:28px}
+.d-tabs [role=tab]{position:relative; display:inline-flex; align-items:center; gap:6px; padding:11px 12px; border:0; background:transparent; color:var(--muted); font-size:14px; font-weight:600}
+.d-tabs [role=tab]:hover{color:var(--ink)}
+.d-tabs [role=tab][aria-selected=true]{color:var(--ink)}
+.d-tabs [role=tab][aria-selected=true]::after{content:""; position:absolute; left:8px; right:8px; bottom:-1px; height:2px; border-radius:2px; background:var(--accent)}
+.d-tabs .n{font-family:var(--mono); font-size:12px; font-weight:500; color:var(--muted)}
+.tab-panel{display:grid; gap:26px; align-content:start}
+
+/* Línea de etapas */
+.stepper{list-style:none; margin:0; padding:0 0 4px; display:flex; overflow-x:auto}
+.paso{flex:1 1 0; min-width:92px; position:relative}
+.paso + .paso::before{content:""; position:absolute; top:15px; right:calc(50% + 18px); left:calc(-50% + 18px); height:2px; background:var(--line)}
+.paso.hecha + .paso::before, .paso.hecha + .paso.actual::before{background:var(--ok)}
+.paso button{width:100%; display:grid; justify-items:center; gap:3px; padding:0 2px 4px; border:0; background:transparent; color:var(--muted); font-size:12.5px; text-align:center}
+.paso button:disabled{cursor:default}
+.paso .pt{display:grid; place-items:center; width:30px; height:30px; border-radius:999px; border:2px solid var(--line); background:var(--surface); font-family:var(--mono); font-size:13px; font-weight:600}
+.paso .pn{font-weight:600; line-height:1.2}
+.paso small{font-size:11.5px; color:var(--muted)}
+.paso.hecha .pt{border-color:var(--ok); background:var(--ok); color:var(--surface)}
+.paso.hecha button{color:var(--ink)}
+.paso.hecha button:hover .pt{box-shadow:0 0 0 4px var(--ok-soft)}
+.paso.actual .pt{border-color:var(--accent); color:var(--accent); box-shadow:0 0 0 4px var(--accent-soft)}
+.paso.actual .pn{color:var(--ink)}
+.paso.actual small{color:var(--accent); font-weight:600}
+.paso.futura .pt{color:var(--muted)}
+.paso.vista:not(.actual) .pt{box-shadow:0 0 0 4px var(--ok-soft)}
+.paso.vista .pn{text-decoration:underline; text-underline-offset:3px; text-decoration-thickness:2px}
+.vista-pasada{display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:12px 14px; border-radius:10px; background:var(--info-soft); font-size:14px}
+.vista-pasada > span:first-child{flex:1 1 240px}
+.vista-pasada .fila{flex-wrap:wrap}
+.vista-pasada .btn-ghost{background:var(--surface)}
+
+/* Siguiente paso */
+.sigue{display:flex; align-items:flex-start; justify-content:space-between; gap:12px; padding:12px 14px; border-radius:10px; background:var(--accent-soft); border-left:4px solid var(--accent)}
+.sigue-accion{display:grid; gap:4px; min-width:0}
+.sigue-txt{margin:0; font-size:16px; font-weight:600; overflow-wrap:anywhere}
+.sigue .btn{flex:none; padding:6px 12px; font-size:13px; background:var(--surface)}
+.sigue-editor{display:grid; gap:8px; margin-top:10px}
+.sigue-editor .fila{justify-content:flex-end}
+#sec-sigue .campo-fecha{margin-top:12px; max-width:420px}
+.link{padding:0; border:0; background:none; color:var(--accent); font:inherit; font-weight:600; text-decoration:underline; text-underline-offset:2px; cursor:pointer}
+
+/* Últimos registros bajo "Anotar" */
+.bitacora.mini li{padding:7px 0; font-size:13px}
+
+/* Avanzar de etapa, al final del flujo */
+.avanzar{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 16px; padding:16px; border:1px dashed var(--line); border-radius:12px; background:var(--surface-2)}
+.avanzar .av-txt{display:grid; gap:4px; flex:1 1 220px; font-size:14px}
+.av-faltan{margin:0; padding-left:18px; color:var(--muted)}
+.avanzar.listo{border-style:solid; border-color:var(--ok); background:var(--ok-soft)}
+.avanzar.listo .av-txt b{color:var(--ok)}
+.btn-avanzar{padding:11px 18px; font-size:15px}
+@media (max-width:480px){ .btn-avanzar{width:100%; justify-content:center} }
+.avanzar.ojo{border-style:solid; border-color:var(--warn); background:var(--warn-soft)}
+.avanzar.ojo .av-txt b{color:var(--warn)}
+.avanzar.ojo .av-faltan{color:var(--ink)}

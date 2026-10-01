@@ -77,10 +77,10 @@ def test_pasar_a_ejecucion_exige_primera_cuota(client):
 
 
 def test_nueva_etapa_transferencia_parte_definiendo_cuotas(client):
-    p = proyecto(client, etapa="Adjudicado")
-    client.post(f"/api/proyectos/{p['id']}/bitacora", json={"texto": "Convenio listo"})
-    r = client.post(f"/api/proyectos/{p['id']}/avanzar")          # Adjudicado → Convenio
-    client.post(f"/api/proyectos/{p['id']}/bitacora", json={"texto": "Firmado"})
+    from tests.test_checklist import completar
+
+    p = proyecto(client, etapa="Convenio")
+    completar(client, p["id"], "Convenio")
     r = client.post(f"/api/proyectos/{p['id']}/avanzar")          # Convenio → Transferencia
     assert r.json()["etapa"] == "Transferencia" and r.json()["accion"] == "Definir las cuotas de transferencia"
 
